@@ -70,23 +70,34 @@ export const createJournalEntry = async (entry: {
   date: Date;
   prayer?: string;
 }) => {
+  console.log('Creating journal entry with data:', entry);
+  
   const user = await getCurrentUser();
   if (!user) throw new Error('User not authenticated');
   
+  const insertData = {
+    user_id: user.id,
+    content: entry.content,
+    mood: entry.mood,
+    gratitude: entry.gratitude,
+    prayer: entry.prayer || null,
+    entry_date: entry.date.toISOString()
+  };
+  
+  console.log('Insert data:', insertData);
+  
   const { data, error } = await supabase
     .from('journal_entries')
-    .insert({
-      user_id: user.id,
-      content: entry.content,
-      mood: entry.mood,
-      gratitude: entry.gratitude,
-      prayer: entry.prayer || null,
-      entry_date: entry.date.toISOString()
-    })
+    .insert(insertData)
     .select()
     .single();
   
-  if (error) throw error;
+  if (error) {
+    console.error('Supabase error:', error);
+    throw error;
+  }
+  
+  console.log('Entry created:', data);
   
   // Map database fields to app fields
   return {

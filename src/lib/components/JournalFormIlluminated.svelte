@@ -29,6 +29,7 @@
   };
   
   async function handleSubmit() {
+    console.log('Submitting journal entry...');
     const validGratitude = gratitude.filter(g => g.trim());
     
     if (!mood && validGratitude.length === 0 && !content && (!prayer || !savePrayer)) {
@@ -36,14 +37,23 @@
       return;
     }
     
+    const entryData = {
+      date: new Date(),
+      mood,
+      gratitude: validGratitude,
+      content,
+      prayer: savePrayer ? prayer : '' // Only save prayer if checkbox is checked
+    };
+    
+    console.log('Entry data:', entryData);
+    
     try {
-      const journalEntry = await journalEntries.addEntry({
-        date: new Date(),
-        mood,
-        gratitude: validGratitude,
-        content,
-        prayer: savePrayer ? prayer : '' // Only save prayer if checkbox is checked
-      });
+      const journalEntry = await journalEntries.addEntry(entryData);
+      console.log('Journal entry result:', journalEntry);
+      
+      if (!journalEntry) {
+        throw new Error('Failed to save journal entry - no data returned');
+      }
       
       // If sharing to community feed
       if (shareToFeed) {
@@ -80,9 +90,10 @@
       shareToFeed = false;
       shareType = 'post';
       shareAnonymously = false;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving entry:', error);
-      alert('Failed to save entry. Please try again.');
+      const errorMessage = error?.message || 'Unknown error occurred';
+      alert(`Failed to save entry: ${errorMessage}\n\nPlease check the console for details.`);
     }
   }
 </script>
