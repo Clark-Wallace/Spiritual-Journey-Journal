@@ -57,7 +57,11 @@
       .from('community_posts')
       .select(`
         *,
-        reactions (count),
+        reactions!left (
+          reaction,
+          count,
+          user_id
+        ),
         encouragements (
           id,
           message,
@@ -88,7 +92,33 @@
     if (error) {
       console.error('Error loading posts:', error);
     } else {
-      posts = data || [];
+      // Process posts to group reactions by type
+      const user = await authStore.getUser();
+      posts = (data || []).map(post => {
+        // Group reactions by type and count them
+        const reactionGroups = {};
+        const userReactions = [];
+        
+        if (post.reactions) {
+          post.reactions.forEach(r => {
+            if (!reactionGroups[r.reaction]) {
+              reactionGroups[r.reaction] = { reaction: r.reaction, count: 0 };
+            }
+            reactionGroups[r.reaction].count++;
+            
+            if (r.user_id === user?.id) {
+              userReactions.push(r.reaction);
+            }
+          });
+        }
+        
+        return {
+          ...post,
+          reactions: Object.values(reactionGroups),
+          user_reactions: userReactions
+        };
+      });
+      
       // Restore expanded state for posts that still exist
       expandedPosts = new Set([...previouslyExpanded].filter(id => 
         posts.some(post => post.id === id)
@@ -221,6 +251,29 @@
     <div class="posts-compact">
       {#each posts as post}
         <div class="post-card" class:expanded={expandedPosts.has(post.id)}>
+          <!-- Visual Reactions Bar -->
+          {#if post.reactions && post.reactions.length > 0}
+            <div class="reactions-visual-bar">
+              {#each post.reactions as reactionGroup}
+                {#if reactionGroup.count > 0}
+                  <div class="reaction-group">
+                    {#each Array(Math.min(reactionGroup.count, 10)) as _, i}
+                      <span 
+                        class="reaction-emoji" 
+                        style="animation-delay: {i * 0.05}s; z-index: {10 - i}"
+                      >
+                        {reactions.find(r => r.type === reactionGroup.reaction)?.emoji || '🙏'}
+                      </span>
+                    {/each}
+                    {#if reactionGroup.count > 10}
+                      <span class="reaction-overflow">+{reactionGroup.count - 10}</span>
+                    {/if}
+                  </div>
+                {/if}
+              {/each}
+            </div>
+          {/if}
+          
           <!-- Compact Header -->
           <div class="post-header">
             <div class="author">
@@ -278,15 +331,18 @@
               {#each reactions as reaction}
                 <button 
                   class="reaction-btn"
+                  class:active={post.user_reactions?.includes(reaction.type)}
                   on:click={() => addReaction(post.id, reaction.type)}
                   title={reaction.type}
                 >
                   {reaction.emoji}
+                  {#if post.reactions?.find(r => r.reaction === reaction.type)?.count > 0}
+                    <span class="reaction-mini-count">
+                      {post.reactions.find(r => r.reaction === reaction.type).count}
+                    </span>
+                  {/if}
                 </button>
               {/each}
-              {#if post.reactions?.[0]?.count > 0}
-                <span class="reaction-count">{post.reactions[0].count}</span>
-              {/if}
             </div>
             
             <button 
@@ -410,7 +466,76 @@
     border: 1px solid rgba(255, 215, 0, 0.2);
     border-radius: 10px;
     padding: 0.75rem;
+    padding-top: 1.25rem;
     transition: all 0.3s;
+    position: relative;
+    overflow: visible;
+  }
+  
+  /* Visual Reactions Bar */
+  .reactions-visual-bar {
+    position: absolute;
+    top: -10px;
+    left: 1rem;
+    right: 1rem;
+    display: flex;
+    gap: 0.75rem;
+    z-index: 10;
+  }
+  
+  .reaction-group {
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+  
+  .reaction-emoji {
+    display: inline-flex;
+    font-size: 1rem;
+    margin-left: -6px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 248, 220, 0.9));
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 215, 0, 0.3);
+    animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) both;
+    position: relative;
+  }
+  
+  .reaction-emoji:first-child {
+    margin-left: 0;
+  }
+  
+  .reaction-emoji:hover {
+    transform: scale(1.2);
+    z-index: 20 !important;
+  }
+  
+  @keyframes bounceIn {
+    0% {
+      transform: scale(0) translateY(-20px);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.1) translateY(0);
+    }
+    100% {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  .reaction-overflow {
+    margin-left: 4px;
+    font-size: 0.7rem;
+    color: var(--text-divine);
+    font-weight: 600;
+    background: rgba(255, 215, 0, 0.2);
+    padding: 2px 6px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 215, 0, 0.3);
   }
   
   .post-card:hover {
@@ -541,12 +666,30 @@
     cursor: pointer;
     transition: all 0.2s;
     font-size: 0.9rem;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
   }
   
   .reaction-btn:hover {
     background: rgba(255, 215, 0, 0.1);
     border-color: var(--border-gold);
     transform: scale(1.1);
+  }
+  
+  .reaction-btn.active {
+    background: rgba(255, 215, 0, 0.2);
+    border-color: var(--border-gold);
+  }
+  
+  .reaction-mini-count {
+    font-size: 0.7rem;
+    color: var(--text-divine);
+    font-weight: 600;
+    background: rgba(255, 215, 0, 0.15);
+    padding: 1px 4px;
+    border-radius: 8px;
   }
   
   .reaction-count {
