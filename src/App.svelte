@@ -1,4 +1,5 @@
 <script lang="ts">
+  // Force rebuild with Illuminated Sanctuary theme - v2
   import { onMount } from 'svelte';
   import { currentView, journalEntries } from './lib/stores';
   import { authStore, userInfo } from './lib/stores/auth';
