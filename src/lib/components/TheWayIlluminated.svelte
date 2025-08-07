@@ -104,7 +104,7 @@
         },
         (payload) => {
           console.log('Reaction change:', payload);
-          loadMessages(); // Reload messages to get updated reaction counts
+          updateReactionInMessages(payload);
         }
       )
       .subscribe((status) => {
@@ -261,6 +261,37 @@
     }
   }
   
+  function updateReactionInMessages(payload: any) {
+    const { eventType, new: newData, old: oldData } = payload;
+    const messageId = newData?.message_id || oldData?.message_id;
+    
+    if (!messageId) return;
+    
+    const messageIndex = messages.findIndex(m => m.id === messageId);
+    if (messageIndex === -1) return;
+    
+    if (eventType === 'INSERT') {
+      // Add reaction
+      if (!messages[messageIndex].chat_reactions) {
+        messages[messageIndex].chat_reactions = [];
+      }
+      messages[messageIndex].chat_reactions.push({
+        reaction: newData.reaction,
+        user_id: newData.user_id
+      });
+    } else if (eventType === 'DELETE') {
+      // Remove reaction
+      if (messages[messageIndex].chat_reactions) {
+        messages[messageIndex].chat_reactions = messages[messageIndex].chat_reactions.filter(
+          r => !(r.reaction === oldData.reaction && r.user_id === oldData.user_id)
+        );
+      }
+    }
+    
+    // Trigger Svelte reactivity
+    messages = messages;
+  }
+
   async function addReaction(messageId: string, reaction: string) {
     const user = await getCurrentUser();
     if (!user) {

@@ -30,15 +30,15 @@
       .channel('community_feed')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'community_posts' },
-        () => loadPosts()
+        (payload) => handlePostUpdate(payload)
       )
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'encouragements' },
-        () => loadPosts()
+        (payload) => handleEncouragementUpdate(payload)
       )
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'reactions' },
-        () => loadPosts()
+        (payload) => handleReactionUpdate(payload)
       )
       .subscribe();
     
@@ -47,6 +47,127 @@
     };
   });
   
+  function handlePostUpdate(payload: any) {
+    const { eventType, new: newData, old: oldData } = payload;
+    
+    if (eventType === 'INSERT') {
+      // Add new post to the beginning if it matches current filter
+      if (shouldIncludePost(newData)) {
+        posts = [processPost(newData), ...posts];
+      }
+    } else if (eventType === 'DELETE') {
+      // Remove deleted post
+      posts = posts.filter(p => p.id !== oldData.id);
+    } else if (eventType === 'UPDATE') {
+      // Update existing post
+      const postIndex = posts.findIndex(p => p.id === newData.id);
+      if (postIndex !== -1) {
+        posts[postIndex] = processPost(newData);
+        posts = posts;
+      }
+    }
+  }
+  
+  function handleEncouragementUpdate(payload: any) {
+    const { eventType, new: newData, old: oldData } = payload;
+    const postId = newData?.post_id || oldData?.post_id;
+    
+    if (!postId) return;
+    
+    const postIndex = posts.findIndex(p => p.id === postId);
+    if (postIndex === -1) return;
+    
+    if (eventType === 'INSERT') {
+      // Add encouragement
+      if (!posts[postIndex].encouragements) {
+        posts[postIndex].encouragements = [];
+      }
+      posts[postIndex].encouragements.push(newData);
+      posts = posts;
+    } else if (eventType === 'DELETE') {
+      // Remove encouragement
+      if (posts[postIndex].encouragements) {
+        posts[postIndex].encouragements = posts[postIndex].encouragements.filter(
+          e => e.id !== oldData.id
+        );
+        posts = posts;
+      }
+    }
+  }
+  
+  function handleReactionUpdate(payload: any) {
+    const { eventType, new: newData, old: oldData } = payload;
+    const postId = newData?.post_id || oldData?.post_id;
+    
+    if (!postId) return;
+    
+    const postIndex = posts.findIndex(p => p.id === postId);
+    if (postIndex === -1) return;
+    
+    // For reactions, it's easier to reload just this post's reactions
+    // since we need to recalculate grouped counts anyway
+    loadSinglePostReactions(postId, postIndex);
+  }
+  
+  async function loadSinglePostReactions(postId: string, postIndex: number) {
+    const { data } = await supabase
+      .from('reactions')
+      .select('*')
+      .eq('post_id', postId);
+    
+    if (data && posts[postIndex]) {
+      const user = await authStore.getUser();
+      const reactionGroups = {};
+      const userReactions = [];
+      
+      data.forEach(r => {
+        if (!reactionGroups[r.reaction_type]) {
+          reactionGroups[r.reaction_type] = { reaction: r.reaction_type, count: 0 };
+        }
+        reactionGroups[r.reaction_type].count++;
+        
+        if (r.user_id === user?.id) {
+          userReactions.push(r.reaction_type);
+        }
+      });
+      
+      posts[postIndex].reactions = Object.values(reactionGroups);
+      posts[postIndex].user_reactions = userReactions;
+      posts = posts;
+    }
+  }
+  
+  function shouldIncludePost(post: any) {
+    if (filter === 'all') return true;
+    if (filter === 'my-posts') return post.user_id === $authStore?.user?.id;
+    return post.share_type === filter;
+  }
+  
+  function processPost(post: any) {
+    // Same processing logic as in loadPosts
+    const reactionGroups = {};
+    const userReactions = [];
+    
+    if (post.reactions) {
+      post.reactions.forEach(r => {
+        if (!reactionGroups[r.reaction]) {
+          reactionGroups[r.reaction] = { reaction: r.reaction, count: 0 };
+        }
+        reactionGroups[r.reaction].count++;
+        
+        if (r.user_id === $authStore?.user?.id) {
+          userReactions.push(r.reaction);
+        }
+      });
+    }
+    
+    return {
+      ...post,
+      reactions: Object.values(reactionGroups),
+      user_reactions: userReactions
+    };
+  }
+
   async function loadPosts() {
     loading = true;
     
