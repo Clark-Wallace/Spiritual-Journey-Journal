@@ -73,8 +73,8 @@
         },
         (payload) => {
           console.log('New message received:', payload);
-          messages = [...messages, payload.new];
-          scrollToBottom();
+          messages = [payload.new, ...messages];
+          scrollToTop();
         }
       )
       .on('postgres_changes',
@@ -144,7 +144,7 @@
         )
       `)
       .eq('room', currentRoom.id)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .limit(100);
     
     if (error) {
@@ -152,7 +152,7 @@
     } else {
       messages = data || [];
       console.log('Loaded messages:', messages);
-      setTimeout(scrollToBottom, 100);
+      setTimeout(scrollToTop, 100);
     }
     
     loading = false;
@@ -306,6 +306,12 @@
     
     if (error) {
       console.error('Error deleting message:', error);
+    }
+  }
+  
+  function scrollToTop() {
+    if (messagesContainer) {
+      messagesContainer.scrollTop = 0;
     }
   }
   
