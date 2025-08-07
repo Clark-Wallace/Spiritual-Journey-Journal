@@ -25,10 +25,19 @@
   onMount(async () => {
     await loadPosts();
     
+    // Subscribe to both posts and encouragements changes
     const channel = supabase
-      .channel('community_posts')
+      .channel('community_feed')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'community_posts' },
+        () => loadPosts()
+      )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'encouragements' },
+        () => loadPosts()
+      )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'reactions' },
         () => loadPosts()
       )
       .subscribe();
@@ -40,6 +49,9 @@
   
   async function loadPosts() {
     loading = true;
+    
+    // Preserve expanded posts state
+    const previouslyExpanded = new Set(expandedPosts);
     
     let query = supabase
       .from('community_posts')
@@ -77,6 +89,10 @@
       console.error('Error loading posts:', error);
     } else {
       posts = data || [];
+      // Restore expanded state for posts that still exist
+      expandedPosts = new Set([...previouslyExpanded].filter(id => 
+        posts.some(post => post.id === id)
+      ));
     }
     
     loading = false;
