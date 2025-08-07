@@ -1533,6 +1533,10 @@
       height: 100vh;
       height: 100dvh;
       position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       overflow: hidden;
     }
     
@@ -1548,11 +1552,15 @@
       position: relative;
       padding-right: 80px; /* Make room for exit button */
       flex-shrink: 0; /* Prevent header from shrinking */
+      height: auto;
     }
     
     .chamber-selection {
       padding: 0 10px;
       gap: 1px;
+      flex-shrink: 0;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
     
     .chamber-portal {
@@ -1572,12 +1580,21 @@
       z-index: 100;
     }
     
+    .sanctuary-hall {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+    }
+    
     .sacred-chamber {
       flex: 1;
-      overflow-y: auto;
+      overflow-y: scroll;
       -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-      padding-bottom: 80px; /* Space for fixed input */
-      height: calc(100vh - 120px); /* Account for header and input */
+      padding: 10px;
+      padding-bottom: 100px; /* Space for fixed input */
+      min-height: 0; /* Important for flex children */
     }
     
     .divine-message {
