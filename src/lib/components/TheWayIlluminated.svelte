@@ -254,23 +254,47 @@
       return;
     }
     
-    console.log('Adding reaction:', { messageId, reaction, userId: user.id });
+    // Find the message and check if user already reacted
+    const message = messages.find(m => m.id === messageId);
+    const existingReaction = message?.chat_reactions?.find(
+      r => r.reaction === reaction && r.user_id === user.id
+    );
     
-    const { data, error } = await supabase
-      .from('chat_reactions')
-      .upsert({
-        message_id: messageId,
-        user_id: user.id,
-        reaction
-      }, {
-        onConflict: 'message_id,user_id,reaction'
-      });
-    
-    if (error) {
-      console.error('Error adding reaction:', error);
+    if (existingReaction) {
+      // Remove the reaction if it exists
+      console.log('Removing reaction:', { messageId, reaction, userId: user.id });
+      
+      const { error } = await supabase
+        .from('chat_reactions')
+        .delete()
+        .eq('message_id', messageId)
+        .eq('user_id', user.id)
+        .eq('reaction', reaction);
+      
+      if (error) {
+        console.error('Error removing reaction:', error);
+      } else {
+        console.log('Reaction removed successfully');
+        await loadMessages();
+      }
     } else {
-      console.log('Reaction added successfully:', data);
-      await loadMessages();
+      // Add the reaction if it doesn't exist
+      console.log('Adding reaction:', { messageId, reaction, userId: user.id });
+      
+      const { data, error } = await supabase
+        .from('chat_reactions')
+        .insert({
+          message_id: messageId,
+          user_id: user.id,
+          reaction
+        });
+      
+      if (error) {
+        console.error('Error adding reaction:', error);
+      } else {
+        console.log('Reaction added successfully:', data);
+        await loadMessages();
+      }
     }
   }
   
