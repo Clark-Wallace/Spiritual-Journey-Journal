@@ -4,8 +4,8 @@
   import { currentView, journalEntries } from './lib/stores';
   import { authStore, userInfo } from './lib/stores/auth';
   import Login from './lib/components/Login.svelte';
-  import JournalForm from './lib/components/JournalForm.svelte';
-  import JournalList from './lib/components/JournalList.svelte';
+  import JournalForm from './lib/components/JournalFormIlluminated.svelte';
+  import JournalList from './lib/components/JournalListIlluminated.svelte';
   import StreakDisplay from './lib/components/StreakDisplay.svelte';
   import ScriptureGuide from './lib/components/ScriptureGuide.svelte';
   import CommunityFeed from './lib/components/CommunityFeedIlluminated.svelte';
