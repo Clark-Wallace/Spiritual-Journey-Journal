@@ -586,6 +586,7 @@
                       <span class="flag-count">({message.message_flags.filter(f => f.flag_type === 'debate_room').length})</span>
                     {/if}
                   </button>
+                  <div class="flag-separator">|</div>
                   <button 
                     class="flag-btn not-the-way"
                     class:active={message.message_flags?.some(f => f.flag_type === 'not_the_way' && f.user_id === $authStore?.id)}
@@ -1316,11 +1317,18 @@
   /* Message Flags */
   .message-flags {
     display: flex;
+    align-items: center;
     gap: 8px;
     margin-top: 8px;
     justify-content: flex-end;
     padding-top: 8px;
     border-top: 1px solid rgba(255, 215, 0, 0.1);
+  }
+  
+  .flag-separator {
+    color: rgba(255, 255, 255, 0.2);
+    font-size: 0.8rem;
+    padding: 0 4px;
   }
   
   .flag-btn {
@@ -1565,7 +1573,7 @@
     }
     
     .message-flags {
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       gap: 4px;
     }
     
