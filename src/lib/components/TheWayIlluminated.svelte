@@ -50,7 +50,9 @@
     };
   });
   
-  onDestroy(() => {
+  onDestroy(async () => {
+    // Clean up presence when component unmounts
+    await removePresence();
     cleanupSubscriptions();
   });
   
@@ -169,6 +171,16 @@
     }
   }
   
+  async function removePresence() {
+    const user = await getCurrentUser();
+    if (!user) return;
+    
+    await supabase
+      .from('user_presence')
+      .delete()
+      .eq('user_id', user.id);
+  }
+  
   async function sendMessage() {
     if (!newMessage.trim()) return;
     
@@ -257,7 +269,14 @@
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   }
   
-  function exitChat() {
+  async function exitChat() {
+    // Clean up presence
+    await removePresence();
+    
+    // Clean up subscriptions
+    cleanupSubscriptions();
+    
+    // Navigate away
     $currentView = 'home';
   }
 </script>
