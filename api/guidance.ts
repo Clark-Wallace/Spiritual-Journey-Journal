@@ -67,7 +67,7 @@ Format your response as JSON:
 
 Ensure the response is compassionate, specific to their situation, and grounded in biblical truth.`;
 
-    console.log('Calling Claude API with key:', process.env.ANTHROPIC_API_KEY?.substring(0, 10) + '...');
+    console.log('Calling Claude API with key starting:', process.env.ANTHROPIC_API_KEY ? 'Key exists' : 'KEY MISSING');
     
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
