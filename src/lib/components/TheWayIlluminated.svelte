@@ -568,6 +568,7 @@
               <div class="scroll-text" class:prayer-illumination={message.is_prayer_request}>
                 {#if message.is_prayer_request}
                   <div class="prayer-label">🙏 PRAYER REQUEST</div>
+                  <div class="prayer-dove">🕊️</div>
                 {/if}
                 {message.message}
               </div>
@@ -678,8 +679,6 @@
               on:transcription={handleVoiceTranscription}
               on:error={handleVoiceError}
             />
-            <button class="altar-tool" title="Add Scripture">📜</button>
-            <button class="altar-tool" title="Mark as Prayer">🕊️</button>
           {/if}
           <button class="altar-tool send-prayer" on:click={sendMessage} aria-label="Send message">
             {#if isMobile}
@@ -1227,6 +1226,8 @@
     color: var(--text-light);
     line-height: 1.6;
     font-size: 14px;
+    position: relative;
+    z-index: 1;
   }
   
   .prayer-illumination {
@@ -1239,14 +1240,27 @@
     overflow: hidden;
   }
   
-  .prayer-illumination::before {
-    content: '🕊️';
+  .prayer-dove {
     position: absolute;
-    top: -20px;
-    right: -20px;
-    font-size: 80px;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 50px;
     opacity: 0.1;
-    transform: rotate(-15deg);
+    pointer-events: none;
+    animation: float-dove 6s ease-in-out infinite;
+    z-index: 0;
+  }
+  
+  @keyframes float-dove {
+    0%, 100% { 
+      transform: translateY(-50%) translateX(0) rotate(-10deg); 
+      opacity: 0.1;
+    }
+    50% { 
+      transform: translateY(-55%) translateX(-3px) rotate(5deg);
+      opacity: 0.15;
+    }
   }
   
   .prayer-label {
