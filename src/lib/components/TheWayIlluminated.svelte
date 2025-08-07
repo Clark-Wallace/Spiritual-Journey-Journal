@@ -358,6 +358,10 @@
         <div class="hall-name">✨ {currentRoom.name} ✨</div>
         <div class="divine-verse">"Behold, how good and pleasant it is when brothers dwell in unity!" - Psalm 133:1</div>
       </div>
+      <!-- Mobile exit button -->
+      <button class="mobile-exit-btn" on:click={exitChat} title="Exit chat">
+        ← Exit
+      </button>
     </div>
     
     <!-- Sacred Room Chambers -->
@@ -684,6 +688,28 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+  }
+  
+  .mobile-exit-btn {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255, 67, 54, 0.2);
+    border: 1px solid rgba(255, 67, 54, 0.4);
+    color: #ff6b6b;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    z-index: 100;
+  }
+  
+  .mobile-exit-btn:hover {
+    background: rgba(255, 67, 54, 0.3);
+    transform: scale(1.05);
   }
   
   /* Sacred Room Chambers */
@@ -1119,6 +1145,15 @@
       display: none;
     }
     
+    .mobile-exit-btn {
+      display: block;
+    }
+    
+    .sanctuary-ceiling {
+      position: relative;
+      padding-right: 80px; /* Make room for exit button */
+    }
+    
     .chamber-selection {
       padding: 0 10px;
       gap: 1px;
@@ -1220,6 +1255,26 @@
   }
   
   @media (max-width: 480px) {
+    .mobile-exit-btn {
+      top: 5px;
+      right: 5px;
+      padding: 5px 10px;
+      font-size: 11px;
+    }
+    
+    .hall-name {
+      font-size: 16px;
+    }
+    
+    .divine-verse {
+      display: none;
+    }
+    
+    .sanctuary-ceiling {
+      padding: 12px;
+      padding-right: 70px;
+    }
+    
     .chat-header {
       padding: 12px;
     }
