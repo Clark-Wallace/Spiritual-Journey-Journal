@@ -47,9 +47,7 @@ ${context ? `Context: ${context}` : ''}
 Please provide:
 1. 2-3 relevant Bible verses that directly address this situation (use well-known translations like NIV or ESV)
 2. A brief explanation of why each verse applies to their specific situation
-3. A short, heartfelt prayer for their situation
-4. One practical action step rooted in scripture
-5. A brief encouraging word
+3. A brief encouraging word
 
 Format your response as JSON:
 {
@@ -60,8 +58,6 @@ Format your response as JSON:
       "application": "2-3 sentences on why this verse specifically applies to their situation"
     }
   ],
-  "prayer": "A personal prayer addressing their specific situation",
-  "actionStep": "One practical thing they can do today",
   "encouragement": "A brief, uplifting message of hope"
 }
 
@@ -121,8 +117,6 @@ Ensure the response is compassionate, specific to their situation, and grounded 
             application: "God invites you to bring your specific concerns to Him right now."
           }
         ],
-        prayer: "Lord, please provide wisdom and peace in this situation. Amen.",
-        actionStep: "Take 5 minutes to pray and cast your cares on God.",
         encouragement: "God is with you in this. You are not alone."
       };
     }
@@ -157,8 +151,6 @@ Ensure the response is compassionate, specific to their situation, and grounded 
             application: "God knows your needs and will provide in His perfect timing."
           }
         ],
-        prayer: "Lord, grant wisdom and peace in this challenging time. Guide each step with Your love. Amen.",
-        actionStep: "Spend 10 minutes in quiet prayer, sharing your heart with God.",
         encouragement: "God sees you, loves you, and is working all things for your good."
       },
       error: error.message || 'Using fallback guidance',

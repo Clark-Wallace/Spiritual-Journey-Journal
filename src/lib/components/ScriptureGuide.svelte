@@ -7,10 +7,9 @@
   let loading = false;
   let scriptures: Array<{verse: string, text: string, application: string}> = [];
   let history: Array<{scenario: string, scriptures: typeof scriptures}> = [];
-  let prayer = '';
-  let actionStep = '';
   let encouragement = '';
   let useAI = true; // Toggle between AI and keyword matching
+  let showGuidanceModal = false; // Show popup modal for AI guidance
   
   let selectedScroll: LivingScroll | null = null;
   let selectedPart: ScrollPart | null = null;
@@ -163,9 +162,8 @@
           text: v.text,
           application: v.application
         }));
-        prayer = aiGuidance.prayer;
-        actionStep = aiGuidance.actionStep;
         encouragement = aiGuidance.encouragement;
+        showGuidanceModal = true; // Show popup modal
       } else {
         // Fallback to keyword matching if AI fails
         const relevantScriptures = findRelevantScriptures(scenario);
@@ -174,6 +172,7 @@
           text: "For I know the plans I have for you, declares the Lord, plans to prosper you and not to harm you, plans to give you hope and a future.",
           application: "Even when the path is unclear, God has good plans for you. Trust in His timing and purpose."
         }];
+        showGuidanceModal = true;
       }
     } else {
       // Use traditional keyword matching
@@ -190,6 +189,7 @@
       } else {
         scriptures = relevantScriptures;
       }
+      showGuidanceModal = true;
     }
     
     history = [{scenario, scriptures}, ...history].slice(0, 5);
@@ -199,6 +199,11 @@
   function reset() {
     scenario = '';
     scriptures = [];
+    showGuidanceModal = false;
+  }
+  
+  function closeGuidanceModal() {
+    showGuidanceModal = false;
   }
 </script>
 
@@ -273,60 +278,47 @@
     {/each}
   </div>
   
-  {#if scriptures.length > 0}
-    <div class="scriptures-section">
-      <h3>God's Word for You:</h3>
-      
-      {#each scriptures as scripture}
-        <div class="scripture-card">
-          <div class="verse-header">
-            <span class="verse-ref">📖 {scripture.verse}</span>
-          </div>
+  {#if showGuidanceModal && scriptures.length > 0}
+    <div class="guidance-overlay" on:click={closeGuidanceModal}>
+      <div class="guidance-modal" on:click|stopPropagation>
+        <button class="close-btn" on:click={closeGuidanceModal}>✕</button>
+        <h2 class="modal-title">✨ Scripture Guidance for You</h2>
+        
+        <div class="modal-content">
+          <h3>God's Word for Your Situation:</h3>
           
-          <blockquote class="verse-text">
-            "{scripture.text}"
-          </blockquote>
+          {#each scriptures as scripture}
+            <div class="scripture-card">
+              <div class="verse-header">
+                <span class="verse-ref">📖 {scripture.verse}</span>
+              </div>
+              
+              <blockquote class="verse-text">
+                "{scripture.text}"
+              </blockquote>
+              
+              <div class="application">
+                <strong>Application:</strong>
+                <p>{scripture.application}</p>
+              </div>
+            </div>
+          {/each}
           
-          <div class="application">
-            <strong>Application:</strong>
-            <p>{scripture.application}</p>
-          </div>
+          {#if encouragement}
+            <div class="encouragement-card">
+              <div class="card-header">
+                <span class="card-icon">💛</span>
+                <h4>Encouragement</h4>
+              </div>
+              <p class="encouragement-text">{encouragement}</p>
+            </div>
+          {/if}
         </div>
-      {/each}
-      
-      {#if useAI && prayer}
-        <div class="prayer-card">
-          <div class="card-header">
-            <span class="card-icon">🙏</span>
-            <h4>A Prayer for You</h4>
-          </div>
-          <p class="prayer-text">{prayer}</p>
-        </div>
-      {/if}
-      
-      {#if useAI && actionStep}
-        <div class="action-card">
-          <div class="card-header">
-            <span class="card-icon">✨</span>
-            <h4>Practical Step</h4>
-          </div>
-          <p class="action-text">{actionStep}</p>
-        </div>
-      {/if}
-      
-      {#if useAI && encouragement}
-        <div class="encouragement-card">
-          <div class="card-header">
-            <span class="card-icon">💛</span>
-            <h4>Encouragement</h4>
-          </div>
-          <p class="encouragement-text">{encouragement}</p>
-        </div>
-      {/if}
-      
-      <button class="new-btn" on:click={reset}>
-        Ask About Something Else
-      </button>
+        
+        <button class="new-btn" on:click={reset}>
+          Ask About Something Else
+        </button>
+      </div>
     </div>
   {/if}
   
@@ -680,6 +672,75 @@
     background: #229954;
   }
   
+  .guidance-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+    padding: 1rem;
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  .guidance-modal {
+    background: linear-gradient(135deg, #fff 0%, #f8f9ff 100%);
+    border-radius: 20px;
+    max-width: 800px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 2.5rem;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3), 0 0 100px rgba(255, 215, 0, 0.1);
+    animation: slideUp 0.4s ease-out;
+  }
+  
+  @keyframes slideUp {
+    from {
+      transform: translateY(30px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  .modal-title {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+    font-size: 2rem;
+    margin: 0 0 2rem 0;
+    font-weight: 700;
+  }
+  
+  .modal-content {
+    margin-bottom: 1.5rem;
+  }
+  
+  .modal-content h3 {
+    color: #4a5568;
+    margin-bottom: 1.5rem;
+    font-size: 1.2rem;
+  }
+  
   .scroll-overlay {
     position: fixed;
     top: 0;
@@ -781,6 +842,15 @@
     
     .scroll-content {
       padding: 1.5rem;
+    }
+    
+    .guidance-modal {
+      padding: 1.5rem;
+      margin: 1rem;
+    }
+    
+    .modal-title {
+      font-size: 1.5rem;
     }
     
     .scripture-paragraph {
