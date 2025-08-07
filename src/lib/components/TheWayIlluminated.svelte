@@ -409,9 +409,13 @@
   }
   
   function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault();
-      sendMessage();
+    // On mobile, Enter key should send (iOS 'Done' button)
+    // On desktop, Enter without Shift sends
+    if (event.key === 'Enter') {
+      if (isMobile || !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+      }
     }
   }
   
@@ -657,14 +661,15 @@
     </div>
     
     <div class="prayer-altar">
-      <div class="altar-vessel">
+      <div class="altar-vessel" class:mobile={isMobile}>
         <textarea 
           class="prayer-inscription" 
           bind:value={newMessage}
           on:keydown={handleKeydown}
           on:input={() => console.log('Input changed:', newMessage)}
-          placeholder="Inscribe your prayer, testimony, or word of encouragement..."
-          rows="2"
+          placeholder={isMobile ? "Type message..." : "Inscribe your prayer, testimony, or word of encouragement..."}
+          rows={isMobile ? "1" : "2"}
+          enterkeyhint="send"
         ></textarea>
         <div class="altar-tools">
           {#if !isMobile}
@@ -673,12 +678,16 @@
               on:transcription={handleVoiceTranscription}
               on:error={handleVoiceError}
             />
+            <button class="altar-tool" title="Add Scripture">📜</button>
+            <button class="altar-tool" title="Mark as Prayer">🕊️</button>
           {/if}
-          <button class="altar-tool" title="Add Scripture">📜</button>
-          <button class="altar-tool" title="Mark as Prayer">🕊️</button>
-          <button class="altar-tool send-prayer" on:click={sendMessage}>
-            <span class="send-text">Lift Up</span>
-            <span class="send-icon">✨</span>
+          <button class="altar-tool send-prayer" on:click={sendMessage} aria-label="Send message">
+            {#if isMobile}
+              <span class="send-icon-only">↑</span>
+            {:else}
+              <span class="send-text">Lift Up</span>
+              <span class="send-icon">✨</span>
+            {/if}
           </button>
         </div>
       </div>
@@ -1455,6 +1464,47 @@
     font-size: 16px;
   }
   
+  .send-icon-only {
+    font-size: 20px;
+    font-weight: bold;
+    transform: rotate(90deg);
+  }
+  
+  /* Mobile-specific altar layout */
+  .altar-vessel.mobile {
+    flex-direction: row;
+    align-items: flex-end;
+    padding: 8px;
+    gap: 8px;
+  }
+  
+  .altar-vessel.mobile .prayer-inscription {
+    min-height: 36px;
+    max-height: 100px;
+    padding: 8px 12px;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+  
+  .altar-vessel.mobile .altar-tools {
+    flex-shrink: 0;
+    gap: 4px;
+  }
+  
+  .altar-vessel.mobile .send-prayer {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #007AFF, #0051D5);
+  }
+  
+  .altar-vessel.mobile .send-prayer:active {
+    transform: scale(0.95);
+  }
+  
   @media (max-width: 768px) {
     .sanctuary-container {
       flex-direction: column;
@@ -1485,31 +1535,33 @@
       font-size: 12px;
     }
     
-    /* Fix altar tools layout on mobile */
-    .altar-tools {
-      gap: 6px;
-    }
-    
-    .altar-tool {
-      font-size: 18px;
-      padding: 4px;
-    }
-    
-    .send-prayer {
-      padding: 6px 10px;
-      font-size: 12px;
-    }
-    
-    .send-text {
-      display: inline;
-    }
-    
+    /* Mobile chat input improvements */
     .prayer-altar {
-      padding: 12px 15px;
+      padding: 8px;
+      background: rgba(0, 0, 0, 0.5);
+      border-top: 1px solid var(--border-gold);
     }
     
-    .altar-vessel {
-      padding: 10px 12px;
+    .sacred-chamber {
+      padding-bottom: 70px; /* Space for fixed input */
+    }
+    
+    .divine-message {
+      margin: 8px;
+    }
+    
+    .message-flags {
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    
+    .flag-btn {
+      padding: 3px 8px;
+      font-size: 0.75rem;
+    }
+    
+    .flag-text {
+      font-size: 0.7rem;
     }
     
     .chamber-icon {
