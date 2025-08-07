@@ -8,7 +8,7 @@
   import JournalList from './lib/components/JournalList.svelte';
   import StreakDisplay from './lib/components/StreakDisplay.svelte';
   import ScriptureGuide from './lib/components/ScriptureGuide.svelte';
-  import CommunityFeed from './lib/components/CommunityFeed.svelte';
+  import CommunityFeed from './lib/components/CommunityFeedIlluminated.svelte';
   import TheWay from './lib/components/TheWayIlluminated.svelte';
   
   onMount(async () => {
