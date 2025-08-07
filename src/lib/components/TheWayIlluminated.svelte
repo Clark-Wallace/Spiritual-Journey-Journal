@@ -88,6 +88,17 @@
           messages = messages.filter(m => m.id !== payload.old.id);
         }
       )
+      .on('postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'chat_reactions'
+        },
+        (payload) => {
+          console.log('Reaction change:', payload);
+          loadMessages(); // Reload messages to get updated reaction counts
+        }
+      )
       .subscribe((status) => {
         console.log('Subscription status:', status);
       });
@@ -238,17 +249,27 @@
   
   async function addReaction(messageId: string, reaction: string) {
     const user = await getCurrentUser();
-    if (!user) return;
+    if (!user) {
+      console.error('No user found for adding reaction');
+      return;
+    }
     
-    const { error } = await supabase
+    console.log('Adding reaction:', { messageId, reaction, userId: user.id });
+    
+    const { data, error } = await supabase
       .from('chat_reactions')
-      .insert({
+      .upsert({
         message_id: messageId,
         user_id: user.id,
         reaction
+      }, {
+        onConflict: 'message_id,user_id,reaction'
       });
     
-    if (!error) {
+    if (error) {
+      console.error('Error adding reaction:', error);
+    } else {
+      console.log('Reaction added successfully:', data);
       await loadMessages();
     }
   }
@@ -436,21 +457,53 @@
                 {message.message}
               </div>
               <div class="blessings-received">
-                <button class="blessing" on:click={() => addReaction(message.id, 'amen')}>
+                <button 
+                  class="blessing" 
+                  class:active={message.chat_reactions?.some(r => r.reaction === 'amen' && r.user_id === $authStore?.id)}
+                  on:click={() => addReaction(message.id, 'amen')}
+                >
                   <span>🙏</span>
-                  <span class="blessing-count">Amen</span>
+                  <span class="blessing-count">
+                    Amen {#if message.chat_reactions?.filter(r => r.reaction === 'amen').length > 0}
+                      ({message.chat_reactions.filter(r => r.reaction === 'amen').length})
+                    {/if}
+                  </span>
                 </button>
-                <button class="blessing" on:click={() => addReaction(message.id, 'pray')}>
+                <button 
+                  class="blessing"
+                  class:active={message.chat_reactions?.some(r => r.reaction === 'pray' && r.user_id === $authStore?.id)}
+                  on:click={() => addReaction(message.id, 'pray')}
+                >
                   <span>🤲</span>
-                  <span class="blessing-count">Praying</span>
+                  <span class="blessing-count">
+                    Praying {#if message.chat_reactions?.filter(r => r.reaction === 'pray').length > 0}
+                      ({message.chat_reactions.filter(r => r.reaction === 'pray').length})
+                    {/if}
+                  </span>
                 </button>
-                <button class="blessing" on:click={() => addReaction(message.id, 'love')}>
+                <button 
+                  class="blessing"
+                  class:active={message.chat_reactions?.some(r => r.reaction === 'love' && r.user_id === $authStore?.id)}
+                  on:click={() => addReaction(message.id, 'love')}
+                >
                   <span>❤️</span>
-                  <span class="blessing-count">Love</span>
+                  <span class="blessing-count">
+                    Love {#if message.chat_reactions?.filter(r => r.reaction === 'love').length > 0}
+                      ({message.chat_reactions.filter(r => r.reaction === 'love').length})
+                    {/if}
+                  </span>
                 </button>
-                <button class="blessing" on:click={() => addReaction(message.id, 'hallelujah')}>
+                <button 
+                  class="blessing"
+                  class:active={message.chat_reactions?.some(r => r.reaction === 'hallelujah' && r.user_id === $authStore?.id)}
+                  on:click={() => addReaction(message.id, 'hallelujah')}
+                >
                   <span>🎉</span>
-                  <span class="blessing-count">Hallelujah</span>
+                  <span class="blessing-count">
+                    Hallelujah {#if message.chat_reactions?.filter(r => r.reaction === 'hallelujah').length > 0}
+                      ({message.chat_reactions.filter(r => r.reaction === 'hallelujah').length})
+                    {/if}
+                  </span>
                 </button>
               </div>
             </div>
@@ -1068,6 +1121,17 @@
     background: radial-gradient(circle, rgba(255, 215, 0, 0.25), transparent);
     transform: scale(1.05);
     box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+  }
+  
+  .blessing.active {
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.4), rgba(138, 43, 226, 0.2));
+    border-color: var(--primary-gold);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+    transform: scale(1.05);
+  }
+  
+  .blessing.active:hover {
+    transform: scale(1.1);
   }
   
   .blessing-count {
