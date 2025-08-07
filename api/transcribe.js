@@ -1,4 +1,5 @@
 import FormData from 'form-data';
+import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
   // Only allow POST requests
@@ -36,14 +37,13 @@ export default async function handler(req, res) {
     // Convert base64 audio to buffer
     const audioBuffer = Buffer.from(audio, 'base64');
     
-    // Create form data for Whisper API (Node.js compatible)
+    // Create form data for Whisper API
     const formData = new FormData();
     formData.append('file', audioBuffer, {
       filename: 'audio.webm',
-      contentType: 'audio/webm'
+      contentType: 'audio/webm',
     });
     formData.append('model', 'whisper-1');
-    formData.append('language', 'en');
     
     console.log('Calling Whisper API...');
     
