@@ -89,36 +89,38 @@
     </button>
   </nav>
   
-  <div class="content">
-    {#if $currentView === 'home'}
-      <div class="home-view">
-        <div class="verse-card">
-          <h2>Today's Verse</h2>
-          <p class="verse">{verseOfDay}</p>
+  {#if $currentView === 'theway'}
+    <TheWay />
+  {:else}
+    <div class="content">
+      {#if $currentView === 'home'}
+        <div class="home-view">
+          <div class="verse-card">
+            <h2>Today's Verse</h2>
+            <p class="verse">{verseOfDay}</p>
+          </div>
+          
+          <StreakDisplay />
+          
+          <div class="quick-actions">
+            <button class="action-btn" on:click={() => $currentView = 'journal'}>
+              ✍️ New Journal Entry
+            </button>
+          </div>
+          
+          <JournalList />
         </div>
-        
-        <StreakDisplay />
-        
-        <div class="quick-actions">
-          <button class="action-btn" on:click={() => $currentView = 'journal'}>
-            ✍️ New Journal Entry
-          </button>
-        </div>
-        
+      {:else if $currentView === 'journal'}
+        <JournalForm />
+        <hr />
         <JournalList />
-      </div>
-    {:else if $currentView === 'journal'}
-      <JournalForm />
-      <hr />
-      <JournalList />
-    {:else if $currentView === 'guidance'}
-      <ScriptureGuide />
-    {:else if $currentView === 'community'}
-      <CommunityFeed />
-    {:else if $currentView === 'theway'}
-      <TheWay />
-    {/if}
-  </div>
+      {:else if $currentView === 'guidance'}
+        <ScriptureGuide />
+      {:else if $currentView === 'community'}
+        <CommunityFeed />
+      {/if}
+    </div>
+  {/if}
 </main>
 {/if}
 

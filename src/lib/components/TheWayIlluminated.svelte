@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { supabase, getCurrentUser } from '../supabase';
   import { authStore, userInfo } from '../stores/auth';
+  import { currentView } from '../stores';
   
   let messages: any[] = [];
   let onlineUsers: any[] = [];
@@ -214,6 +215,10 @@
   function getInitials(name: string) {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   }
+  
+  function exitChat() {
+    $currentView = 'home';
+  }
 </script>
 
 <div class="sanctuary-container">
@@ -223,6 +228,9 @@
       <div class="sanctuary-emblem">⛪</div>
       <div class="sanctuary-title">THE WAY</div>
       <div class="sanctuary-subtitle">Where souls gather in His light</div>
+      <button class="exit-sanctuary" on:click={exitChat} title="Return to main app">
+        ← Exit
+      </button>
     </div>
     
     <div class="congregation">
@@ -360,13 +368,17 @@
 
 <style>
   .sanctuary-container {
-    height: calc(100vh - 200px);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 100vh;
+    width: 100vw;
     display: flex;
     background: linear-gradient(180deg, var(--bg-dark) 0%, var(--bg-dark-secondary) 100%);
-    position: relative;
-    border-radius: 12px;
+    z-index: 1000;
     overflow: hidden;
-    box-shadow: var(--shadow-raised);
   }
   
   /* Sidebar */
@@ -413,6 +425,26 @@
     font-size: 11px;
     font-style: italic;
     letter-spacing: 1px;
+  }
+  
+  .exit-sanctuary {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid var(--border-gold);
+    color: var(--text-divine);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  
+  .exit-sanctuary:hover {
+    background: rgba(255, 215, 0, 0.2);
+    transform: scale(1.05);
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
   }
   
   .congregation {
