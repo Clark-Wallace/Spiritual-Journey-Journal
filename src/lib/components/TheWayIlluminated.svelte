@@ -142,6 +142,10 @@
         chat_reactions (
           reaction,
           user_id
+        ),
+        message_flags (
+          flag_type,
+          user_id
         )
       `)
       .eq('room', currentRoom.id)
@@ -151,7 +155,9 @@
     if (error) {
       console.error('Error loading messages:', error);
     } else {
-      messages = data || [];
+      // Filter out hidden messages unless they're from the current user
+      const user = await getCurrentUser();
+      messages = (data || []).filter(m => !m.hidden || m.user_id === user?.id);
       console.log('Loaded messages:', messages);
       setTimeout(scrollToTop, 100);
     }
@@ -294,6 +300,54 @@
         console.error('Error adding reaction:', error);
       } else {
         console.log('Reaction added successfully:', data);
+        await loadMessages();
+      }
+    }
+  }
+  
+  async function flagMessage(messageId: string, flagType: 'debate_room' | 'not_the_way') {
+    const user = await getCurrentUser();
+    if (!user) return;
+    
+    // Find the message and check if user already flagged
+    const message = messages.find(m => m.id === messageId);
+    const existingFlag = message?.message_flags?.find(
+      f => f.flag_type === flagType && f.user_id === user.id
+    );
+    
+    if (existingFlag) {
+      // Remove the flag if it exists
+      const { error } = await supabase
+        .from('message_flags')
+        .delete()
+        .eq('message_id', messageId)
+        .eq('user_id', user.id)
+        .eq('flag_type', flagType);
+      
+      if (error) {
+        console.error('Error removing flag:', error);
+      } else {
+        await loadMessages();
+      }
+    } else {
+      // Add the flag if it doesn't exist
+      const { error } = await supabase
+        .from('message_flags')
+        .insert({
+          message_id: messageId,
+          user_id: user.id,
+          flag_type: flagType
+        });
+      
+      if (error) {
+        console.error('Error adding flag:', error);
+      } else {
+        // Show appropriate feedback
+        if (flagType === 'debate_room') {
+          // Could show a toast: "Suggested for Debate Room"
+        } else {
+          // Could show a toast: "Flagged as inappropriate"
+        }
         await loadMessages();
       }
     }
@@ -506,6 +560,39 @@
                 {/if}
                 {message.message}
               </div>
+              {#if message.user_id !== $authStore?.id}
+                <div class="message-flags">
+                  <button 
+                    class="flag-btn debate-room" 
+                    class:active={message.message_flags?.some(f => f.flag_type === 'debate_room' && f.user_id === $authStore?.id)}
+                    on:click={() => flagMessage(message.id, 'debate_room')}
+                    title="Suggest moving to Debate Room"
+                  >
+                    <span>⚖️</span>
+                    <span class="flag-text">Debate Room</span>
+                    {#if message.message_flags?.filter(f => f.flag_type === 'debate_room').length > 0}
+                      <span class="flag-count">({message.message_flags.filter(f => f.flag_type === 'debate_room').length})</span>
+                    {/if}
+                  </button>
+                  <button 
+                    class="flag-btn not-the-way"
+                    class:active={message.message_flags?.some(f => f.flag_type === 'not_the_way' && f.user_id === $authStore?.id)}
+                    on:click={() => flagMessage(message.id, 'not_the_way')}
+                    title="Flag as inappropriate"
+                  >
+                    <span>🚫</span>
+                    <span class="flag-text">Not The Way</span>
+                    {#if message.message_flags?.filter(f => f.flag_type === 'not_the_way').length > 0}
+                      <span class="flag-count">({message.message_flags.filter(f => f.flag_type === 'not_the_way').length})</span>
+                    {/if}
+                  </button>
+                </div>
+              {/if}
+              {#if message.hidden && message.user_id === $authStore?.id}
+                <div class="hidden-notice">
+                  ⚠️ This message has been hidden due to multiple flags
+                </div>
+              {/if}
               <div class="blessings-received">
                 <button 
                   class="blessing" 
@@ -1192,6 +1279,89 @@
   .blessing-count {
     font-size: 11px;
     font-weight: 600;
+  }
+  
+  /* Message Flags */
+  .message-flags {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    justify-content: flex-end;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 215, 0, 0.1);
+  }
+  
+  .flag-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 4px 10px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.85rem;
+    opacity: 0.6;
+  }
+  
+  .flag-btn:hover {
+    opacity: 1;
+  }
+  
+  .flag-btn.debate-room {
+    border-color: rgba(255, 193, 7, 0.3);
+  }
+  
+  .flag-btn.debate-room:hover {
+    background: rgba(255, 193, 7, 0.1);
+    border-color: rgba(255, 193, 7, 0.5);
+    color: #ffc107;
+  }
+  
+  .flag-btn.debate-room.active {
+    background: rgba(255, 193, 7, 0.2);
+    border-color: #ffc107;
+    color: #ffc107;
+    opacity: 1;
+  }
+  
+  .flag-btn.not-the-way {
+    border-color: rgba(244, 67, 54, 0.3);
+  }
+  
+  .flag-btn.not-the-way:hover {
+    background: rgba(244, 67, 54, 0.1);
+    border-color: rgba(244, 67, 54, 0.5);
+    color: #f44336;
+  }
+  
+  .flag-btn.not-the-way.active {
+    background: rgba(244, 67, 54, 0.2);
+    border-color: #f44336;
+    color: #f44336;
+    opacity: 1;
+  }
+  
+  .flag-text {
+    font-size: 0.8rem;
+  }
+  
+  .flag-count {
+    font-size: 0.75rem;
+    opacity: 0.8;
+  }
+  
+  .hidden-notice {
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid rgba(244, 67, 54, 0.3);
+    color: #f44336;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-top: 8px;
+    font-size: 0.9rem;
+    text-align: center;
   }
   
   /* Prayer Altar */
