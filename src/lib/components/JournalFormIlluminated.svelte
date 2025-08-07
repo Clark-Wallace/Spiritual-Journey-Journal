@@ -47,20 +47,25 @@
       
       // If sharing to community feed
       if (shareToFeed) {
-        const communityPost = await shareToCommunity({
-          mood,
-          gratitude: validGratitude,
-          content,
-          prayer: savePrayer ? prayer : '',
-          shareType,
-          isAnonymous: shareAnonymously
-        });
-        
-        // Show specific feedback for sharing
-        if (communityPost) {
-          alert('Entry saved to your journal and shared with the community! 🎉✨');
-        } else {
-          alert('Entry saved to your journal, but sharing failed. Try sharing from Community later.');
+        try {
+          const communityPost = await shareToCommunity({
+            mood,
+            gratitude: validGratitude,
+            content,
+            prayer: savePrayer ? prayer : '',
+            shareType,
+            isAnonymous: shareAnonymously
+          });
+          
+          // Show specific feedback for sharing
+          if (communityPost) {
+            alert('Entry saved to your journal and shared with the community! 🎉✨');
+          } else {
+            alert('Entry saved to your journal, but sharing failed. Try sharing from Community later.');
+          }
+        } catch (shareError) {
+          console.error('Error sharing to community:', shareError);
+          alert(`Entry saved to journal, but sharing failed: ${shareError.message}`);
         }
       } else {
         alert('Entry saved to your private journal! 📔');

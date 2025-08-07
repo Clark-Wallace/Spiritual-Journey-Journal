@@ -53,9 +53,9 @@
       .select(`
         *,
         reactions (count),
-        encouragements (
+        encouragements!post_id (
           id,
-          content,
+          message,
           user_name,
           created_at
         ),
@@ -65,11 +65,6 @@
           is_urgent,
           is_answered,
           prayer_warriors (count)
-        ),
-        journal_entries (
-          id,
-          date,
-          mood
         )
       `)
       .order('created_at', { ascending: false });
@@ -87,8 +82,10 @@
     
     if (error) {
       console.error('Error loading posts:', error);
+      alert(`Error loading posts: ${error.message}`);
     } else {
       posts = data || [];
+      console.log('Loaded posts:', posts);
     }
     
     loading = false;
@@ -124,7 +121,7 @@
         post_id: postId,
         user_id: user.id,
         user_name: $userInfo?.name || user.email?.split('@')[0],
-        content: comment
+        message: comment
       });
     
     if (!error) {
@@ -365,7 +362,7 @@
                       </div>
                       <div class="comment-content">
                         <div class="comment-author">{comment.user_name}</div>
-                        <div class="comment-text">{comment.content}</div>
+                        <div class="comment-text">{comment.message}</div>
                         <div class="comment-time">{formatDate(comment.created_at)}</div>
                       </div>
                     </div>
