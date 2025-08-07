@@ -314,7 +314,7 @@
     cleanupSubscriptions();
     
     // Navigate away
-    $currentView = 'home';
+    currentView.set('home');
   }
 </script>
 

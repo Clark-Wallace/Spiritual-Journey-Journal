@@ -60,31 +60,31 @@
   <nav>
     <button 
       class:active={$currentView === 'home'} 
-      on:click={() => $currentView = 'home'}
+      on:click={() => currentView.set('home')}
     >
       🏠 Home
     </button>
     <button 
       class:active={$currentView === 'community'} 
-      on:click={() => $currentView = 'community'}
+      on:click={() => currentView.set('community')}
     >
       🌍 Community
     </button>
     <button 
       class:active={$currentView === 'journal'} 
-      on:click={() => $currentView = 'journal'}
+      on:click={() => currentView.set('journal')}
     >
       📔 Journal
     </button>
     <button 
       class:active={$currentView === 'guidance'} 
-      on:click={() => $currentView = 'guidance'}
+      on:click={() => currentView.set('guidance')}
     >
       ✨ Guidance
     </button>
     <button 
       class:active={$currentView === 'theway'} 
-      on:click={() => $currentView = 'theway'}
+      on:click={() => currentView.set('theway')}
     >
       💬 The Way
     </button>
@@ -104,7 +104,7 @@
           <StreakDisplay />
           
           <div class="quick-actions">
-            <button class="action-btn" on:click={() => $currentView = 'journal'}>
+            <button class="action-btn" on:click={() => currentView.set('journal')}>
               ✍️ New Journal Entry
             </button>
           </div>

@@ -155,7 +155,29 @@ function createStreakStore() {
   return { subscribe };
 }
 
+// Create a persistent view store
+function createViewStore() {
+  // Get initial value from localStorage or default to 'home'
+  const storedView = typeof window !== 'undefined' 
+    ? localStorage.getItem('currentView') as 'home' | 'journal' | 'guidance' | 'community' | 'theway' || 'home'
+    : 'home';
+  
+  const { subscribe, set, update } = writable<'home' | 'journal' | 'guidance' | 'community' | 'theway'>(storedView);
+  
+  return {
+    subscribe,
+    set: (value: 'home' | 'journal' | 'guidance' | 'community' | 'theway') => {
+      // Save to localStorage whenever the view changes
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('currentView', value);
+      }
+      set(value);
+    },
+    update
+  };
+}
+
 export const journalEntries = createJournalStore();
 export const prayers = createPrayerStore();
 export const streak = createStreakStore();
-export const currentView = writable<'home' | 'journal' | 'guidance' | 'community' | 'theway'>('home');
+export const currentView = createViewStore();
