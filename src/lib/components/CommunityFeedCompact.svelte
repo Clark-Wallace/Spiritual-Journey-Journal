@@ -7,7 +7,7 @@
   let loading = true;
   let filter: 'all' | 'prayer' | 'testimony' | 'praise' | 'post' | 'my-posts' = 'all';
   let expandedPosts: Set<string> = new Set();
-  let commentInputs: Map<string, string> = new Map();
+  let commentInputs: { [key: string]: string } = {};
   
   const moodEmojis = {
     grateful: '🙏', peaceful: '😌', joyful: '😊', hopeful: '✨',
@@ -46,7 +46,7 @@
       .select(`
         *,
         reactions (count),
-        encouragements!post_id (
+        encouragements (
           id,
           message,
           user_name,
@@ -98,13 +98,13 @@
   }
   
   async function addComment(postId: string) {
-    const comment = commentInputs.get(postId);
+    const comment = commentInputs[postId];
     if (!comment?.trim()) return;
     
     const user = await authStore.getUser();
     if (!user) return;
     
-    await supabase
+    const { error } = await supabase
       .from('encouragements')
       .insert({
         post_id: postId,
@@ -113,7 +113,12 @@
         message: comment
       });
     
-    commentInputs.set(postId, '');
+    if (error) {
+      console.error('Error adding comment:', error);
+      return;
+    }
+    
+    commentInputs[postId] = '';
     await loadPosts();
   }
   
