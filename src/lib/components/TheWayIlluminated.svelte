@@ -182,29 +182,43 @@
   }
   
   async function sendMessage() {
-    if (!newMessage.trim()) return;
+    console.log('sendMessage called, newMessage:', newMessage);
+    if (!newMessage.trim()) {
+      console.log('Message is empty, returning');
+      return;
+    }
     
     const user = await getCurrentUser();
-    if (!user) return;
+    if (!user) {
+      console.error('No user found');
+      return;
+    }
     
     const isPrayerRequest = newMessage.toLowerCase().includes('pray') || 
                            newMessage.toLowerCase().includes('need prayer');
     
-    const { error } = await supabase
+    const messageData = {
+      room: currentRoom.id,
+      user_id: user.id,
+      user_name: $userInfo?.name || user.user_metadata?.name || user.email?.split('@')[0],
+      message: newMessage.trim(),
+      is_prayer_request: isPrayerRequest
+    };
+    
+    console.log('Attempting to insert message:', messageData);
+    
+    const { data, error } = await supabase
       .from('chat_messages')
-      .insert({
-        room: currentRoom.id,
-        user_id: user.id,
-        user_name: user.user_metadata?.name || user.email?.split('@')[0],
-        message: newMessage.trim(),
-        is_prayer_request: isPrayerRequest
-      });
+      .insert(messageData)
+      .select()
+      .single();
     
     if (error) {
       console.error('Error sending message:', error);
+      alert('Failed to send message: ' + error.message);
     } else {
+      console.log('Message sent successfully:', data);
       newMessage = '';
-      console.log('Message sent successfully');
     }
   }
   
@@ -424,6 +438,7 @@
           class="prayer-inscription" 
           bind:value={newMessage}
           on:keydown={handleKeydown}
+          on:input={() => console.log('Input changed:', newMessage)}
           placeholder="Inscribe your prayer, testimony, or word of encouragement..."
           rows="2"
         ></textarea>
