@@ -26,7 +26,8 @@ function createJournalStore() {
           content: entry.content,
           mood: entry.mood,
           gratitude: entry.gratitude,
-          date: new Date(entry.date)
+          date: new Date(entry.date),
+          prayer: entry.prayer
         });
         
         if (newEntry) {

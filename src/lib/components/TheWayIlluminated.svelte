@@ -13,6 +13,23 @@
   let subscription: any;
   let presenceSubscription: any;
   
+  // Chat rooms
+  interface ChatRoom {
+    id: string;
+    name: string;
+    icon: string;
+  }
+  
+  const rooms: ChatRoom[] = [
+    { id: 'fellowship', name: 'Fellowship Hall', icon: '⛪' },
+    { id: 'prayer', name: 'Prayer Chamber', icon: '🙏' },
+    { id: 'scripture', name: 'Scripture Study', icon: '📖' },
+    { id: 'testimony', name: 'Testimony', icon: '✨' },
+    { id: 'worship', name: 'Worship', icon: '🎵' }
+  ];
+  
+  let currentRoom = rooms[0];
+  
   const statusConfig = {
     online: { icon: '✨', label: 'Walking in faith', color: '#4caf50' },
     praying: { icon: '🙏', label: 'In prayer', color: '#ffa726' },
@@ -88,6 +105,7 @@
           user_id
         )
       `)
+      .eq('room', currentRoom.id)
       .order('created_at', { ascending: true })
       .limit(100);
     
@@ -148,6 +166,7 @@
     const { error } = await supabase
       .from('chat_messages')
       .insert({
+        room: currentRoom.id,
         user_id: user.id,
         user_name: user.user_metadata?.name || user.email?.split('@')[0],
         message: newMessage,
@@ -194,6 +213,12 @@
     if (messagesContainer) {
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
+  }
+  
+  function switchRoom(room: ChatRoom) {
+    currentRoom = room;
+    messages = [];
+    loadMessages();
   }
   
   function formatTime(date: string) {
@@ -281,9 +306,23 @@
   <div class="sanctuary-hall">
     <div class="sanctuary-ceiling">
       <div class="hall-inscription">
-        <div class="hall-name">✨ Sacred Fellowship Hall ✨</div>
+        <div class="hall-name">✨ {currentRoom.name} ✨</div>
         <div class="divine-verse">"Behold, how good and pleasant it is when brothers dwell in unity!" - Psalm 133:1</div>
       </div>
+    </div>
+    
+    <!-- Sacred Room Chambers -->
+    <div class="chamber-selection">
+      {#each rooms as room}
+        <button 
+          class="chamber-portal"
+          class:active={currentRoom.id === room.id}
+          on:click={() => switchRoom(room)}
+        >
+          <span class="chamber-icon">{room.icon}</span>
+          <span class="chamber-name">{room.name}</span>
+        </button>
+      {/each}
     </div>
     
     <div class="sacred-chamber" bind:this={messagesContainer}>
@@ -595,6 +634,99 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+  }
+  
+  /* Sacred Room Chambers */
+  .chamber-selection {
+    display: flex;
+    gap: 2px;
+    padding: 0 20px;
+    background: linear-gradient(180deg, rgba(20, 20, 35, 0.95), rgba(15, 15, 25, 0.9));
+    border-bottom: 1px solid;
+    border-image: linear-gradient(90deg, transparent, var(--border-gold), transparent) 1;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-gold) transparent;
+  }
+  
+  .chamber-selection::-webkit-scrollbar {
+    height: 4px;
+  }
+  
+  .chamber-selection::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .chamber-selection::-webkit-scrollbar-thumb {
+    background: var(--border-gold);
+    border-radius: 2px;
+  }
+  
+  .chamber-portal {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.05), rgba(138, 43, 226, 0.05));
+    border: 1px solid transparent;
+    border-bottom: 2px solid transparent;
+    color: var(--text-scripture);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    white-space: nowrap;
+  }
+  
+  .chamber-portal::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--primary-gold), transparent);
+    transition: width 0.3s;
+  }
+  
+  .chamber-portal:hover {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(138, 43, 226, 0.08));
+    color: var(--text-holy);
+  }
+  
+  .chamber-portal:hover::before {
+    width: 100%;
+  }
+  
+  .chamber-portal.active {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(138, 43, 226, 0.1));
+    border-bottom-color: var(--primary-gold);
+    color: var(--text-divine);
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+  }
+  
+  .chamber-portal.active::before {
+    width: 100%;
+    height: 3px;
+    background: var(--primary-gold);
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  }
+  
+  .chamber-icon {
+    font-size: 16px;
+    filter: drop-shadow(0 0 4px currentColor);
+  }
+  
+  .chamber-portal.active .chamber-icon {
+    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.5));
+    animation: pulse 2s infinite;
+  }
+  
+  .chamber-name {
+    font-weight: 500;
+    letter-spacing: 0.5px;
   }
   
   .hall-name {
@@ -930,18 +1062,147 @@
     .sanctuary-container {
       flex-direction: column;
       height: 100vh;
+      height: 100dvh;
     }
     
     .sidebar {
+      display: none;
+    }
+    
+    .chamber-selection {
+      padding: 0 10px;
+      gap: 1px;
+    }
+    
+    .chamber-portal {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+    
+    .chamber-icon {
+      font-size: 14px;
+    }
+    
+    .chamber-name {
+      display: none;
+    }
+    
+    .chamber-portal.active .chamber-name {
+      display: inline;
+    }
+    
+    .chat-container {
       width: 100%;
-      max-height: 200px;
-      border-right: none;
-      border-bottom: 2px solid;
-      border-image: linear-gradient(90deg, transparent, var(--border-gold), transparent) 1;
+      height: 100vh;
+      height: 100dvh;
+    }
+    
+    .chat-header {
+      padding: 15px;
+    }
+    
+    .chat-title {
+      font-size: 1.2rem;
+    }
+    
+    .chat-subtitle {
+      font-size: 0.8rem;
+    }
+    
+    .messages-scroll {
+      height: calc(100vh - 180px);
+      height: calc(100dvh - 180px);
+      padding: 10px;
+    }
+    
+    .message {
+      padding: 10px;
+      margin: 5px;
+      max-width: 85%;
+    }
+    
+    .message-header {
+      font-size: 0.75rem;
+    }
+    
+    .message-body {
+      font-size: 0.9rem;
+    }
+    
+    .altar-ground {
+      padding: 10px;
+    }
+    
+    .prayer-vessel {
+      gap: 8px;
+    }
+    
+    .prayer-inscription {
+      padding: 10px 12px;
+      font-size: 16px;
+      border-radius: 20px;
+    }
+    
+    .prayer-inscription::placeholder {
+      font-size: 0.85rem;
+    }
+    
+    .altar-tools {
+      display: none;
+    }
+    
+    .send-prayer {
+      padding: 10px 16px;
+      font-size: 0.9rem;
+      border-radius: 20px;
     }
     
     .divine-verse {
       display: none;
+    }
+    
+    .exit-sanctuary {
+      top: 15px;
+      right: 15px;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .chat-header {
+      padding: 12px;
+    }
+    
+    .chat-title {
+      font-size: 1.1rem;
+    }
+    
+    .messages-scroll {
+      padding: 8px;
+    }
+    
+    .message {
+      padding: 8px;
+      margin: 4px;
+    }
+    
+    .message-header {
+      font-size: 0.7rem;
+    }
+    
+    .message-body {
+      font-size: 0.85rem;
+    }
+    
+    .prayer-inscription {
+      font-size: 16px;
+      padding: 8px 10px;
+    }
+    
+    .send-prayer {
+      padding: 8px 14px;
+      font-size: 0.85rem;
     }
   }
 </style>

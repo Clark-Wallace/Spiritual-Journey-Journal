@@ -82,10 +82,8 @@
     
     if (error) {
       console.error('Error loading posts:', error);
-      alert(`Error loading posts: ${error.message}`);
     } else {
       posts = data || [];
-      console.log('Loaded posts:', posts);
     }
     
     loading = false;

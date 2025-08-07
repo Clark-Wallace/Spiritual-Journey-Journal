@@ -68,6 +68,7 @@ export const createJournalEntry = async (entry: {
   mood: string;
   gratitude: string[];
   date: Date;
+  prayer?: string;
 }) => {
   const user = await getCurrentUser();
   if (!user) throw new Error('User not authenticated');
@@ -79,6 +80,7 @@ export const createJournalEntry = async (entry: {
       content: entry.content,
       mood: entry.mood,
       gratitude: entry.gratitude,
+      prayer: entry.prayer || null,
       entry_date: entry.date.toISOString()
     })
     .select()

@@ -6,9 +6,10 @@
   import Login from './lib/components/Login.svelte';
   import JournalForm from './lib/components/JournalFormIlluminated.svelte';
   import JournalList from './lib/components/JournalListIlluminated.svelte';
+  import JournalListCollapsible from './lib/components/JournalListCollapsible.svelte';
   import StreakDisplay from './lib/components/StreakDisplay.svelte';
   import ScriptureGuide from './lib/components/ScriptureGuide.svelte';
-  import CommunityFeed from './lib/components/CommunityFeedIlluminated.svelte';
+  import CommunityFeed from './lib/components/CommunityFeedCompact.svelte';
   import TheWay from './lib/components/TheWayIlluminated.svelte';
   
   onMount(async () => {
@@ -108,7 +109,7 @@
             </button>
           </div>
           
-          <JournalList />
+          <JournalListCollapsible />
         </div>
       {:else if $currentView === 'journal'}
         <JournalForm />
@@ -206,23 +207,38 @@
     border-bottom: 1px solid var(--border-gold);
     display: flex;
     justify-content: center;
-    gap: 1rem;
-    padding: 0.75rem;
+    gap: 0.5rem;
+    padding: 0.5rem;
     position: sticky;
     top: 0;
     z-index: 99;
+    overflow-x: auto;
   }
   
   nav button {
-    padding: 0.5rem 1rem;
+    padding: 0.4rem 0.8rem;
     border: 1px solid transparent;
     background: rgba(255, 255, 255, 0.02);
     color: var(--text-holy);
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 0.9rem;
     border-radius: 8px;
     transition: all var(--transition-normal);
     font-family: var(--font-secondary);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  
+  @media (max-width: 600px) {
+    nav {
+      gap: 0.25rem;
+      padding: 0.4rem;
+    }
+    
+    nav button {
+      padding: 0.35rem 0.6rem;
+      font-size: 0.85rem;
+    }
   }
   
   nav button:hover {
