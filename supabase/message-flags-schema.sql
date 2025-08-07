@@ -83,7 +83,8 @@ CREATE TRIGGER check_message_flags_trigger
 
 -- Update RLS for chat_messages to filter hidden messages (optional)
 -- This will hide flagged messages from everyone except the author
-CREATE OR REPLACE POLICY "Users can view non-hidden messages" ON chat_messages
+DROP POLICY IF EXISTS "Users can view non-hidden messages" ON chat_messages;
+CREATE POLICY "Users can view non-hidden messages" ON chat_messages
   FOR SELECT USING (
     hidden = false OR user_id = auth.uid()
   );
