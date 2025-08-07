@@ -1,10 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-// Note: We'll use fetch instead of SDK for simpler deployment
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
-) {
+export default async function handler(req: any, res: any) {
   // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -21,7 +15,20 @@ export default async function handler(
   }
 
   try {
+    // Check if API key exists
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('Missing ANTHROPIC_API_KEY environment variable');
+      return res.status(500).json({ 
+        error: 'API configuration error',
+        message: 'Claude API key not configured'
+      });
+    }
+
     const { situation, mood, recentJournalContent } = req.body;
+    
+    if (!situation) {
+      return res.status(400).json({ error: 'Situation is required' });
+    }
 
     // Build context from journal if available
     let context = '';
@@ -60,6 +67,8 @@ Format your response as JSON:
 
 Ensure the response is compassionate, specific to their situation, and grounded in biblical truth.`;
 
+    console.log('Calling Claude API with key:', process.env.ANTHROPIC_API_KEY?.substring(0, 10) + '...');
+    
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -81,7 +90,9 @@ Ensure the response is compassionate, specific to their situation, and grounded 
     });
 
     if (!response.ok) {
-      throw new Error(`Claude API error: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('Claude API error:', response.status, errorText);
+      throw new Error(`Claude API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
@@ -123,9 +134,14 @@ Ensure the response is compassionate, specific to their situation, and grounded 
     });
 
   } catch (error: any) {
-    console.error('Guidance API error:', error);
+    console.error('Guidance API error:', error.message || error);
     
-    // Return a helpful fallback response even on error
+    // Log more details for debugging
+    if (error.message?.includes('Claude API error')) {
+      console.error('Claude API specific error - check API key and model name');
+    }
+    
+    // Always return a valid response with fallback guidance
     return res.status(200).json({
       success: false,
       guidance: {
@@ -134,13 +150,19 @@ Ensure the response is compassionate, specific to their situation, and grounded 
             reference: "Proverbs 3:5-6",
             text: "Trust in the Lord with all your heart and lean not on your own understanding; in all your ways submit to him, and he will make your paths straight.",
             application: "Even when things are unclear, God promises to guide you as you trust Him."
+          },
+          {
+            reference: "Philippians 4:19",
+            text: "And my God will meet all your needs according to the riches of his glory in Christ Jesus.",
+            application: "God knows your needs and will provide in His perfect timing."
           }
         ],
         prayer: "Lord, grant wisdom and peace in this challenging time. Guide each step with Your love. Amen.",
         actionStep: "Spend 10 minutes in quiet prayer, sharing your heart with God.",
         encouragement: "God sees you, loves you, and is working all things for your good."
       },
-      error: 'Using fallback guidance',
+      error: error.message || 'Using fallback guidance',
+      debugInfo: process.env.NODE_ENV === 'development' ? error.toString() : undefined,
       timestamp: new Date().toISOString()
     });
   }
