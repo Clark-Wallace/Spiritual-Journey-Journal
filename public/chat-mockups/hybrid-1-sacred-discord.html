@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Way - Sacred Discord</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+            height: 100vh;
+            display: flex;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Subtle ambient glow */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at center, rgba(255, 215, 0, 0.03) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        
+        /* Floating light particles */
+        .light-particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: rgba(255, 215, 0, 0.6);
+            border-radius: 50%;
+            animation: floatUp 15s infinite linear;
+        }
+        
+        @keyframes floatUp {
+            0% {
+                transform: translateY(100vh) translateX(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100vh) translateX(20px);
+                opacity: 0;
+            }
+        }
+        
+        .light-particle:nth-child(1) { left: 10%; animation-delay: 0s; }
+        .light-particle:nth-child(2) { left: 30%; animation-delay: 3s; }
+        .light-particle:nth-child(3) { left: 50%; animation-delay: 6s; }
+        .light-particle:nth-child(4) { left: 70%; animation-delay: 9s; }
+        .light-particle:nth-child(5) { left: 90%; animation-delay: 12s; }
+        
+        /* Sidebar - Sacred Style */
+        .sidebar {
+            width: 260px;
+            background: rgba(15, 15, 30, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid rgba(255, 215, 0, 0.1);
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 193, 7, 0.1));
+            border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+        }
+        
+        .app-title {
+            color: #ffd700;
+            font-size: 20px;
+            font-weight: 600;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+        
+        .app-subtitle {
+            color: rgba(255, 223, 186, 0.7);
+            font-size: 12px;
+            font-style: italic;
+        }
+        
+        /* Online Section */
+        .presence-section {
+            padding: 15px;
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .section-header {
+            color: rgba(255, 215, 0, 0.6);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .online-count {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 10px;
+        }
+        
+        .user-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        .user-item:hover {
+            background: rgba(255, 215, 0, 0.08);
+            transform: translateX(3px);
+        }
+        
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 193, 7, 0.3));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffd700;
+            font-weight: 600;
+            font-size: 14px;
+            margin-right: 12px;
+            position: relative;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+        }
+        
+        .status-dot {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 2px solid #0f0f1e;
+        }
+        
+        .status-online { background: #4caf50; box-shadow: 0 0 5px #4caf50; }
+        .status-praying { background: #ffa726; box-shadow: 0 0 5px #ffa726; }
+        .status-reading { background: #42a5f5; box-shadow: 0 0 5px #42a5f5; }
+        
+        .user-info {
+            flex: 1;
+        }
+        
+        .user-name {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+        
+        .user-status {
+            color: rgba(255, 223, 186, 0.5);
+            font-size: 11px;
+        }
+        
+        /* Guidelines */
+        .guidelines {
+            padding: 15px;
+            border-top: 1px solid rgba(255, 215, 0, 0.1);
+            background: rgba(255, 215, 0, 0.03);
+        }
+        
+        .guideline-item {
+            color: rgba(255, 223, 186, 0.6);
+            font-size: 12px;
+            margin-bottom: 6px;
+            padding-left: 15px;
+            position: relative;
+        }
+        
+        .guideline-item::before {
+            content: '✦';
+            position: absolute;
+            left: 0;
+            color: rgba(255, 215, 0, 0.4);
+        }
+        
+        /* Main Chat Area */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(26, 26, 46, 0.4);
+        }
+        
+        /* Chat Header */
+        .chat-header {
+            height: 65px;
+            background: rgba(15, 15, 30, 0.8);
+            border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .channel-info {
+            flex: 1;
+        }
+        
+        .channel-name {
+            color: #ffd700;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+        
+        .channel-verse {
+            color: rgba(255, 223, 186, 0.6);
+            font-size: 12px;
+            font-style: italic;
+            margin-top: 4px;
+        }
+        
+        /* Messages Area */
+        .messages-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        /* Welcome Banner */
+        .welcome-card {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 193, 7, 0.05));
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .welcome-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.05) 0%, transparent 70%);
+            animation: gentleRotate 20s linear infinite;
+        }
+        
+        @keyframes gentleRotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .welcome-card h2 {
+            color: #ffd700;
+            font-size: 24px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            position: relative;
+        }
+        
+        .welcome-card p {
+            color: rgba(255, 223, 186, 0.8);
+            line-height: 1.6;
+            position: relative;
+        }
+        
+        /* Messages */
+        .message {
+            display: flex;
+            gap: 12px;
+            padding: 10px;
+            border-radius: 8px;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        .message:hover {
+            background: rgba(255, 215, 0, 0.03);
+        }
+        
+        .message-avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 193, 7, 0.2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffd700;
+            font-weight: 600;
+            font-size: 16px;
+            flex-shrink: 0;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.1);
+        }
+        
+        .message-content {
+            flex: 1;
+        }
+        
+        .message-header {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+        
+        .message-author {
+            color: #ffd700;
+            font-weight: 500;
+            font-size: 15px;
+        }
+        
+        .message-time {
+            color: rgba(255, 223, 186, 0.4);
+            font-size: 12px;
+        }
+        
+        .message-text {
+            color: rgba(255, 255, 255, 0.85);
+            line-height: 1.5;
+            font-size: 15px;
+        }
+        
+        /* Prayer Request Message */
+        .prayer-request {
+            background: linear-gradient(90deg, rgba(255, 152, 0, 0.1), transparent);
+            border-left: 3px solid rgba(255, 152, 0, 0.6);
+            padding: 12px;
+            margin-top: 8px;
+            border-radius: 0 8px 8px 0;
+            position: relative;
+        }
+        
+        .prayer-request::before {
+            content: '🙏 PRAYER REQUEST';
+            display: block;
+            color: #ffa726;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        
+        /* Reactions */
+        .message-reactions {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        
+        .reaction {
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            padding: 4px 10px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .reaction:hover {
+            background: rgba(255, 215, 0, 0.2);
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+        
+        .reaction-count {
+            color: rgba(255, 223, 186, 0.7);
+            font-size: 12px;
+        }
+        
+        /* Input Area */
+        .input-area {
+            padding: 20px;
+            background: rgba(15, 15, 30, 0.9);
+            border-top: 1px solid rgba(255, 215, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .input-container {
+            background: rgba(255, 215, 0, 0.05);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 10px;
+            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        
+        .input-container:focus-within {
+            background: rgba(255, 215, 0, 0.08);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+        }
+        
+        .input-field {
+            flex: 1;
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 15px;
+            outline: none;
+        }
+        
+        .input-field::placeholder {
+            color: rgba(255, 223, 186, 0.4);
+        }
+        
+        .input-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .input-btn {
+            background: none;
+            border: none;
+            color: rgba(255, 215, 0, 0.6);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            transition: all 0.3s;
+        }
+        
+        .input-btn:hover {
+            color: #ffd700;
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body>
+    <!-- Floating light particles -->
+    <div class="light-particle"></div>
+    <div class="light-particle"></div>
+    <div class="light-particle"></div>
+    <div class="light-particle"></div>
+    <div class="light-particle"></div>
+    
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="app-title">
+                <span>✝️</span>
+                <span>The Way</span>
+            </div>
+            <div class="app-subtitle">Fellowship in His presence</div>
+        </div>
+        
+        <div class="presence-section">
+            <div class="section-header">
+                <span>Gathering Together</span>
+                <span class="online-count">12</span>
+            </div>
+            
+            <div class="user-item">
+                <div class="user-avatar">
+                    JD
+                    <div class="status-dot status-online"></div>
+                </div>
+                <div class="user-info">
+                    <div class="user-name">John David</div>
+                    <div class="user-status">Walking in faith</div>
+                </div>
+            </div>
+            
+            <div class="user-item">
+                <div class="user-avatar">
+                    SM
+                    <div class="status-dot status-praying"></div>
+                </div>
+                <div class="user-info">
+                    <div class="user-name">Sarah Marie</div>
+                    <div class="user-status">🙏 In prayer</div>
+                </div>
+            </div>
+            
+            <div class="user-item">
+                <div class="user-avatar">
+                    PG
+                    <div class="status-dot status-reading"></div>
+                </div>
+                <div class="user-info">
+                    <div class="user-name">Paul Grace</div>
+                    <div class="user-status">📖 Reading Word</div>
+                </div>
+            </div>
+            
+            <div class="user-item">
+                <div class="user-avatar">
+                    MH
+                    <div class="status-dot status-online"></div>
+                </div>
+                <div class="user-info">
+                    <div class="user-name">Mary Hope</div>
+                    <div class="user-status">Blessed & grateful</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="guidelines">
+            <div class="section-header">Sacred Guidelines</div>
+            <div class="guideline-item">Love one another deeply</div>
+            <div class="guideline-item">Encourage & strengthen</div>
+            <div class="guideline-item">Bear one another's burdens</div>
+            <div class="guideline-item">Speak truth in love</div>
+        </div>
+    </div>
+    
+    <!-- Main Chat -->
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="channel-info">
+                <div class="channel-name">
+                    <span>🕊️</span>
+                    <span>sanctuary</span>
+                </div>
+                <div class="channel-verse">"For where two or three gather in my name, there am I with them." - Matthew 18:20</div>
+            </div>
+        </div>
+        
+        <div class="messages-area">
+            <div class="welcome-card">
+                <h2>Welcome to The Way</h2>
+                <p>A sacred digital space where hearts unite in prayer and fellowship</p>
+                <p style="margin-top: 15px; font-size: 14px; color: rgba(255, 215, 0, 0.7);">
+                    "Let us not give up meeting together... but let us encourage one another" - Hebrews 10:25
+                </p>
+            </div>
+            
+            <div class="message">
+                <div class="message-avatar">SM</div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="message-author">Sarah Marie</span>
+                        <span class="message-time">10:15 AM</span>
+                    </div>
+                    <div class="message-text">
+                        Good morning beloved family! I woke up with such peace in my heart today. 
+                        His mercies are new every morning. How is everyone's spirit today? 🌅
+                    </div>
+                    <div class="message-reactions">
+                        <div class="reaction">
+                            <span>❤️</span>
+                            <span class="reaction-count">5</span>
+                        </div>
+                        <div class="reaction">
+                            <span>🙏</span>
+                            <span class="reaction-count">3</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="message">
+                <div class="message-avatar">JD</div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="message-author">John David</span>
+                        <span class="message-time">10:18 AM</span>
+                    </div>
+                    <div class="message-text">
+                        Amen Sarah! I just finished my morning devotion. God spoke to me through Psalm 23 today. 
+                        Even in the valley, He is with us. His rod and staff comfort us. 
+                    </div>
+                </div>
+            </div>
+            
+            <div class="message">
+                <div class="message-avatar">PG</div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="message-author">Paul Grace</span>
+                        <span class="message-time">10:22 AM</span>
+                    </div>
+                    <div class="message-text">
+                        <div class="prayer-request">
+                            Brothers and sisters, I come before you with a heavy heart. My daughter is struggling with her faith 
+                            after some difficult trials. Please lift her up in prayer. She needs to feel God's love and presence. 
+                            Her name is Rebecca. Thank you family. 🙏
+                        </div>
+                    </div>
+                    <div class="message-reactions">
+                        <div class="reaction">
+                            <span>🙏</span>
+                            <span class="reaction-count">12</span>
+                        </div>
+                        <div class="reaction">
+                            <span>💪</span>
+                            <span class="reaction-count">6</span>
+                        </div>
+                        <div class="reaction">
+                            <span>❤️</span>
+                            <span class="reaction-count">8</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="message">
+                <div class="message-avatar">MH</div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="message-author">Mary Hope</span>
+                        <span class="message-time">10:25 AM</span>
+                    </div>
+                    <div class="message-text">
+                        Praying for Rebecca right now Paul. "The Lord is close to the brokenhearted and saves those who are crushed in spirit." 
+                        Psalm 34:18. May she feel His embrace today. 🕊️
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="input-area">
+            <div class="input-container">
+                <input type="text" class="input-field" placeholder="Share your heart, lift a prayer, speak encouragement...">
+                <div class="input-actions">
+                    <button class="input-btn">📖</button>
+                    <button class="input-btn">🙏</button>
+                    <button class="input-btn">✨</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

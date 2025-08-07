@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Way - Illuminated Sanctuary</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Georgia', -apple-system, 'Segoe UI', serif;
+            height: 100vh;
+            display: flex;
+            background: #0a0a0f;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Stained glass effect background */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(138, 43, 226, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(255, 215, 0, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(30, 144, 255, 0.1) 0%, transparent 70%);
+            animation: shimmer 30s ease-in-out infinite;
+        }
+        
+        @keyframes shimmer {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 0.8; }
+        }
+        
+        /* Divine light rays */
+        .light-ray {
+            position: absolute;
+            top: -100%;
+            width: 2px;
+            height: 300%;
+            background: linear-gradient(to bottom, 
+                transparent, 
+                rgba(255, 255, 255, 0.1), 
+                transparent);
+            transform: rotate(15deg);
+            animation: rayMove 20s linear infinite;
+        }
+        
+        .light-ray:nth-child(1) { left: 10%; animation-delay: 0s; }
+        .light-ray:nth-child(2) { left: 35%; animation-delay: 5s; }
+        .light-ray:nth-child(3) { left: 60%; animation-delay: 10s; }
+        .light-ray:nth-child(4) { left: 85%; animation-delay: 15s; }
+        
+        @keyframes rayMove {
+            0% { transform: translateY(-100%) rotate(15deg); }
+            100% { transform: translateY(100%) rotate(15deg); }
+        }
+        
+        /* Sidebar - Cathedral Style */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, 
+                rgba(10, 10, 15, 0.98) 0%, 
+                rgba(15, 15, 25, 0.98) 100%);
+            backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            border-right: 2px solid;
+            border-image: linear-gradient(180deg, 
+                rgba(255, 215, 0, 0.3), 
+                rgba(138, 43, 226, 0.3), 
+                rgba(30, 144, 255, 0.3)) 1;
+            position: relative;
+            z-index: 10;
+        }
+        
+        /* Ornate header */
+        .sidebar-header {
+            padding: 25px 20px;
+            text-align: center;
+            position: relative;
+            background: radial-gradient(ellipse at center, rgba(255, 215, 0, 0.1), transparent);
+        }
+        
+        .sidebar-header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 20%;
+            right: 20%;
+            height: 1px;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 215, 0, 0.5), 
+                transparent);
+        }
+        
+        .sanctuary-emblem {
+            font-size: 48px;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.5));
+            animation: glow 3s ease-in-out infinite;
+        }
+        
+        @keyframes glow {
+            0%, 100% { filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.5)); }
+            50% { filter: drop-shadow(0 0 30px rgba(255, 215, 0, 0.8)); }
+        }
+        
+        .sanctuary-title {
+            color: transparent;
+            background: linear-gradient(180deg, #ffd700, #ffed4e);
+            -webkit-background-clip: text;
+            background-clip: text;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+        }
+        
+        .sanctuary-subtitle {
+            color: rgba(200, 200, 255, 0.7);
+            font-size: 11px;
+            font-style: italic;
+            letter-spacing: 1px;
+        }
+        
+        /* Presence Section - Illuminated Style */
+        .congregation {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 15px;
+        }
+        
+        .section-divider {
+            color: rgba(255, 215, 0, 0.5);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            text-align: center;
+            position: relative;
+            padding: 0 10px;
+        }
+        
+        .section-divider::before,
+        .section-divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 30%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.3));
+        }
+        
+        .section-divider::before { left: 0; }
+        .section-divider::after { right: 0; transform: rotate(180deg); }
+        
+        .soul-vessel {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, 
+                rgba(138, 43, 226, 0.05), 
+                rgba(30, 144, 255, 0.05));
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.4s;
+            position: relative;
+        }
+        
+        .soul-vessel:hover {
+            background: linear-gradient(135deg, 
+                rgba(138, 43, 226, 0.1), 
+                rgba(30, 144, 255, 0.1));
+            border-color: rgba(255, 215, 0, 0.2);
+            transform: translateX(5px);
+        }
+        
+        .soul-vessel::before {
+            content: '';
+            position: absolute;
+            left: -5px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 0;
+            background: linear-gradient(180deg, transparent, #ffd700, transparent);
+            transition: height 0.3s;
+        }
+        
+        .soul-vessel:hover::before {
+            height: 70%;
+        }
+        
+        .soul-avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.2), rgba(138, 43, 226, 0.2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffd700;
+            font-weight: bold;
+            margin-right: 12px;
+            position: relative;
+            box-shadow: 0 0 20px rgba(138, 43, 226, 0.3);
+        }
+        
+        .presence-aura {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid #0a0a0f;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 currentColor; }
+            50% { box-shadow: 0 0 0 4px currentColor; opacity: 0.5; }
+        }
+        
+        .aura-active { background: #4caf50; color: rgba(76, 175, 80, 0.4); }
+        .aura-praying { background: #ff9800; color: rgba(255, 152, 0, 0.4); }
+        .aura-studying { background: #2196f3; color: rgba(33, 150, 243, 0.4); }
+        
+        .soul-details {
+            flex: 1;
+        }
+        
+        .soul-name {
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+        
+        .soul-message {
+            color: rgba(200, 200, 255, 0.6);
+            font-size: 11px;
+            font-style: italic;
+        }
+        
+        /* Sacred Guidelines */
+        .sacred-scrolls {
+            padding: 20px 15px;
+            background: linear-gradient(180deg, 
+                rgba(138, 43, 226, 0.05), 
+                rgba(10, 10, 15, 0.98));
+            border-top: 1px solid rgba(255, 215, 0, 0.2);
+        }
+        
+        .scroll-item {
+            color: rgba(200, 200, 255, 0.7);
+            font-size: 11px;
+            line-height: 1.8;
+            padding-left: 20px;
+            position: relative;
+            margin-bottom: 5px;
+        }
+        
+        .scroll-item::before {
+            content: '†';
+            position: absolute;
+            left: 5px;
+            color: rgba(255, 215, 0, 0.5);
+        }
+        
+        /* Main Sanctuary Area */
+        .sanctuary-hall {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        /* Sanctuary Header */
+        .sanctuary-ceiling {
+            background: linear-gradient(180deg, 
+                rgba(10, 10, 15, 0.95), 
+                rgba(20, 20, 35, 0.9));
+            backdrop-filter: blur(10px);
+            padding: 20px 25px;
+            border-bottom: 1px solid;
+            border-image: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 215, 0, 0.3), 
+                transparent) 1;
+        }
+        
+        .hall-inscription {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .hall-name {
+            font-size: 22px;
+            color: transparent;
+            background: linear-gradient(90deg, #ffd700, #fff, #ffd700);
+            -webkit-background-clip: text;
+            background-clip: text;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+        
+        .divine-verse {
+            color: rgba(200, 200, 255, 0.6);
+            font-size: 12px;
+            font-style: italic;
+            max-width: 400px;
+        }
+        
+        /* Messages Sanctuary */
+        .sacred-chamber {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            background: radial-gradient(ellipse at center top, 
+                rgba(138, 43, 226, 0.05), 
+                transparent 50%);
+        }
+        
+        /* Illuminated Messages */
+        .divine-message {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding: 15px;
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.02), 
+                rgba(255, 255, 255, 0.01));
+            border-radius: 12px;
+            position: relative;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .divine-message::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, 
+                transparent, 
+                rgba(138, 43, 226, 0.5), 
+                transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .divine-message:hover::before {
+            opacity: 1;
+        }
+        
+        .messenger-seal {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: radial-gradient(circle, 
+                rgba(255, 215, 0, 0.15), 
+                rgba(138, 43, 226, 0.15));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 18px;
+            box-shadow: 0 0 30px rgba(138, 43, 226, 0.2);
+            position: relative;
+        }
+        
+        .messenger-seal::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            animation: rotate 10s linear infinite;
+        }
+        
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .message-scroll {
+            flex: 1;
+        }
+        
+        .scroll-header {
+            display: flex;
+            align-items: baseline;
+            gap: 15px;
+            margin-bottom: 8px;
+        }
+        
+        .messenger-name {
+            color: #ffd700;
+            font-size: 15px;
+            font-weight: 600;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+        
+        .message-timestamp {
+            color: rgba(200, 200, 255, 0.5);
+            font-size: 11px;
+        }
+        
+        .scroll-text {
+            color: rgba(255, 255, 255, 0.9);
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        
+        /* Prayer Illumination */
+        .prayer-illumination {
+            background: linear-gradient(135deg, 
+                rgba(255, 152, 0, 0.1), 
+                rgba(255, 193, 7, 0.05));
+            border: 1px solid rgba(255, 152, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .prayer-illumination::before {
+            content: '🕊️';
+            position: absolute;
+            top: -20px;
+            right: -20px;
+            font-size: 80px;
+            opacity: 0.1;
+            transform: rotate(-15deg);
+        }
+        
+        .prayer-label {
+            color: #ff9800;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+        
+        /* Blessed Reactions */
+        .blessings-received {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        
+        .blessing {
+            background: radial-gradient(circle, 
+                rgba(255, 215, 0, 0.15), 
+                transparent);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            padding: 5px 12px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .blessing:hover {
+            background: radial-gradient(circle, 
+                rgba(255, 215, 0, 0.25), 
+                transparent);
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+        }
+        
+        .blessing-count {
+            color: rgba(255, 215, 0, 0.8);
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        /* Altar Input Area */
+        .prayer-altar {
+            padding: 20px 25px;
+            background: linear-gradient(180deg, 
+                rgba(20, 20, 35, 0.95), 
+                rgba(10, 10, 15, 0.98));
+            border-top: 1px solid;
+            border-image: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 215, 0, 0.3), 
+                transparent) 1;
+            backdrop-filter: blur(10px);
+        }
+        
+        .altar-vessel {
+            background: linear-gradient(135deg, 
+                rgba(138, 43, 226, 0.05), 
+                rgba(30, 144, 255, 0.05));
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 12px;
+            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        
+        .altar-vessel:focus-within {
+            background: linear-gradient(135deg, 
+                rgba(138, 43, 226, 0.1), 
+                rgba(30, 144, 255, 0.1));
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.2);
+        }
+        
+        .prayer-inscription {
+            flex: 1;
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+        }
+        
+        .prayer-inscription::placeholder {
+            color: rgba(200, 200, 255, 0.4);
+            font-style: italic;
+        }
+        
+        .altar-tools {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .altar-tool {
+            background: none;
+            border: none;
+            color: rgba(255, 215, 0, 0.5);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            transition: all 0.3s;
+        }
+        
+        .altar-tool:hover {
+            color: #ffd700;
+            transform: scale(1.2);
+            filter: drop-shadow(0 0 10px currentColor);
+        }
+    </style>
+</head>
+<body>
+    <!-- Light rays -->
+    <div class="light-ray"></div>
+    <div class="light-ray"></div>
+    <div class="light-ray"></div>
+    <div class="light-ray"></div>
+    
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="sanctuary-emblem">⛪</div>
+            <div class="sanctuary-title">THE WAY</div>
+            <div class="sanctuary-subtitle">Where souls gather in His light</div>
+        </div>
+        
+        <div class="congregation">
+            <div class="section-divider">Gathered Souls • 12</div>
+            
+            <div class="soul-vessel">
+                <div class="soul-avatar">
+                    MG
+                    <div class="presence-aura aura-active"></div>
+                </div>
+                <div class="soul-details">
+                    <div class="soul-name">Mary Grace</div>
+                    <div class="soul-message">Walking in His light</div>
+                </div>
+            </div>
+            
+            <div class="soul-vessel">
+                <div class="soul-avatar">
+                    JF
+                    <div class="presence-aura aura-praying"></div>
+                </div>
+                <div class="soul-details">
+                    <div class="soul-name">James Faith</div>
+                    <div class="soul-message">🙏 Deep in prayer</div>
+                </div>
+            </div>
+            
+            <div class="soul-vessel">
+                <div class="soul-avatar">
+                    PS
+                    <div class="presence-aura aura-studying"></div>
+                </div>
+                <div class="soul-details">
+                    <div class="soul-name">Paul Spirit</div>
+                    <div class="soul-message">📖 Studying the Word</div>
+                </div>
+            </div>
+            
+            <div class="soul-vessel">
+                <div class="soul-avatar">
+                    RH
+                    <div class="presence-aura aura-active"></div>
+                </div>
+                <div class="soul-details">
+                    <div class="soul-name">Ruth Hope</div>
+                    <div class="soul-message">Praising His name</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="sacred-scrolls">
+            <div class="section-divider">Sacred Covenant</div>
+            <div class="scroll-item">Love one another as He loved us</div>
+            <div class="scroll-item">Bear each other's burdens</div>
+            <div class="scroll-item">Encourage with psalms & hymns</div>
+            <div class="scroll-item">Speak truth wrapped in grace</div>
+        </div>
+    </div>
+    
+    <!-- Main Sanctuary -->
+    <div class="sanctuary-hall">
+        <div class="sanctuary-ceiling">
+            <div class="hall-inscription">
+                <div class="hall-name">✨ Sacred Fellowship Hall ✨</div>
+                <div class="divine-verse">"Behold, how good and pleasant it is when brothers dwell in unity!" - Psalm 133:1</div>
+            </div>
+        </div>
+        
+        <div class="sacred-chamber">
+            <div class="divine-message">
+                <div class="messenger-seal">MG</div>
+                <div class="message-scroll">
+                    <div class="scroll-header">
+                        <span class="messenger-name">Mary Grace</span>
+                        <span class="message-timestamp">10:30 AM</span>
+                    </div>
+                    <div class="scroll-text">
+                        Beloved family, this morning the Lord reminded me of His faithfulness through Lamentations 3:22-23. 
+                        "His mercies never come to an end; they are new every morning." What a blessed assurance! 
+                        How has God shown you His mercy today? ✨
+                    </div>
+                    <div class="blessings-received">
+                        <div class="blessing">
+                            <span>🙏</span>
+                            <span class="blessing-count">7</span>
+                        </div>
+                        <div class="blessing">
+                            <span>❤️</span>
+                            <span class="blessing-count">5</span>
+                        </div>
+                        <div class="blessing">
+                            <span>✨</span>
+                            <span class="blessing-count">3</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="divine-message">
+                <div class="messenger-seal">JF</div>
+                <div class="message-scroll">
+                    <div class="scroll-header">
+                        <span class="messenger-name">James Faith</span>
+                        <span class="message-timestamp">10:35 AM</span>
+                    </div>
+                    <div class="scroll-text">
+                        <div class="prayer-illumination">
+                            <div class="prayer-label">Prayer Request</div>
+                            <div class="scroll-text">
+                                Brothers and sisters, I lift up my friend David who lost his job yesterday. 
+                                He's the sole provider for his family of five. Please join me in prayer for God's provision 
+                                and for doors to open. "And my God will supply every need of yours according to his riches 
+                                in glory in Christ Jesus." - Philippians 4:19
+                            </div>
+                        </div>
+                    </div>
+                    <div class="blessings-received">
+                        <div class="blessing">
+                            <span>🙏</span>
+                            <span class="blessing-count">15</span>
+                        </div>
+                        <div class="blessing">
+                            <span>💪</span>
+                            <span class="blessing-count">8</span>
+                        </div>
+                        <div class="blessing">
+                            <span>🕊️</span>
+                            <span class="blessing-count">6</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="divine-message">
+                <div class="messenger-seal">PS</div>
+                <div class="message-scroll">
+                    <div class="scroll-header">
+                        <span class="messenger-name">Paul Spirit</span>
+                        <span class="message-timestamp">10:38 AM</span>
+                    </div>
+                    <div class="scroll-text">
+                        Praying now for David, James. The Lord who fed 5000 with five loaves and two fish 
+                        can surely provide! I'm reminded of Psalm 37:25 - "I have been young, and now am old, 
+                        yet I have not seen the righteous forsaken or his children begging for bread." 
+                        Standing in faith with you! 🙏
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="prayer-altar">
+            <div class="altar-vessel">
+                <input type="text" class="prayer-inscription" placeholder="Inscribe your prayer, testimony, or word of encouragement...">
+                <div class="altar-tools">
+                    <button class="altar-tool">📜</button>
+                    <button class="altar-tool">🕊️</button>
+                    <button class="altar-tool">✨</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

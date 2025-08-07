@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Way - Prayer Room Feel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1e 50%, #16213e 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Ambient light effects */
+        body::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 223, 186, 0.03) 0%, transparent 70%);
+            animation: gentleGlow 20s ease-in-out infinite;
+        }
+        
+        @keyframes gentleGlow {
+            0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.5; }
+            50% { transform: rotate(180deg) scale(1.1); opacity: 0.8; }
+        }
+        
+        /* Candle lights floating */
+        .candle-light {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, rgba(255, 183, 77, 0.6), transparent);
+            border-radius: 50%;
+            animation: flicker 3s ease-in-out infinite;
+        }
+        
+        .candle-light:nth-child(1) { top: 10%; left: 5%; animation-delay: 0s; }
+        .candle-light:nth-child(2) { top: 20%; right: 10%; animation-delay: 1s; }
+        .candle-light:nth-child(3) { bottom: 30%; left: 8%; animation-delay: 2s; }
+        .candle-light:nth-child(4) { bottom: 20%; right: 5%; animation-delay: 0.5s; }
+        
+        @keyframes flicker {
+            0%, 100% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.1); }
+        }
+        
+        /* Header - Sanctuary entrance */
+        .sanctuary-header {
+            background: linear-gradient(180deg, rgba(26, 26, 46, 0.95), rgba(26, 26, 46, 0.8));
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 223, 186, 0.2);
+            position: relative;
+            z-index: 10;
+        }
+        
+        .sanctuary-title {
+            color: #ffd700;
+            font-size: 28px;
+            font-weight: 300;
+            letter-spacing: 3px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            margin-bottom: 8px;
+        }
+        
+        .sanctuary-verse {
+            color: rgba(255, 223, 186, 0.8);
+            font-size: 14px;
+            font-style: italic;
+        }
+        
+        /* Online souls indicator */
+        .souls-present {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 223, 186, 0.1);
+            border: 1px solid rgba(255, 223, 186, 0.3);
+            padding: 8px 15px;
+            border-radius: 20px;
+            color: #ffd700;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .soul-indicator {
+            width: 8px;
+            height: 8px;
+            background: #4caf50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+        }
+        
+        /* Messages area - Prayer Wall */
+        .prayer-wall {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            position: relative;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 1000px;
+            width: 100%;
+            margin: 0 auto;
+        }
+        
+        /* Prayer notes/messages */
+        .prayer-note {
+            background: linear-gradient(135deg, rgba(255, 248, 225, 0.95), rgba(255, 243, 205, 0.95));
+            color: #2c3e50;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 
+                0 5px 15px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.5);
+            position: relative;
+            transform: rotate(-1deg);
+            transition: all 0.3s ease;
+            max-width: 600px;
+            animation: fadeInUp 0.5s ease-out;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px) rotate(-1deg);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) rotate(-1deg);
+            }
+        }
+        
+        .prayer-note:nth-child(even) {
+            align-self: flex-end;
+            transform: rotate(1deg);
+            background: linear-gradient(135deg, rgba(255, 235, 205, 0.95), rgba(255, 228, 181, 0.95));
+        }
+        
+        .prayer-note:hover {
+            transform: rotate(0deg) scale(1.02);
+            box-shadow: 
+                0 8px 25px rgba(0, 0, 0, 0.4),
+                0 0 40px rgba(255, 215, 0, 0.2);
+        }
+        
+        .prayer-note::before {
+            content: '📌';
+            position: absolute;
+            top: -10px;
+            left: 20px;
+            font-size: 20px;
+        }
+        
+        .note-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .note-author {
+            font-weight: 600;
+            color: #8b4513;
+            font-size: 14px;
+        }
+        
+        .note-time {
+            font-size: 12px;
+            color: #a0522d;
+            opacity: 0.8;
+        }
+        
+        .note-content {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #3e2723;
+            font-family: 'Georgia', serif;
+        }
+        
+        /* Special prayer request style */
+        .prayer-request-note {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.15), rgba(255, 152, 0, 0.15));
+            border: 2px solid rgba(255, 152, 0, 0.3);
+            padding-left: 50px;
+        }
+        
+        .prayer-request-note::after {
+            content: '🙏';
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 24px;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(-50%); }
+            50% { transform: translateY(-60%); }
+        }
+        
+        /* Praise report style */
+        .praise-note {
+            background: linear-gradient(135deg, rgba(139, 195, 74, 0.15), rgba(76, 175, 80, 0.15));
+            border: 2px solid rgba(76, 175, 80, 0.3);
+        }
+        
+        .praise-note::before {
+            content: '✨';
+            animation: sparkle 2s ease-in-out infinite;
+        }
+        
+        @keyframes sparkle {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.2); }
+        }
+        
+        /* Prayer warriors (reactions) */
+        .prayer-warriors {
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .warrior-count {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 15px;
+            font-size: 13px;
+            color: #5d4037;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .warrior-count:hover {
+            background: rgba(255, 255, 255, 0.8);
+            transform: scale(1.05);
+        }
+        
+        /* Welcome sanctuary message */
+        .sanctuary-welcome {
+            background: radial-gradient(ellipse at center, rgba(255, 215, 0, 0.1), transparent);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            color: #ffd700;
+            margin-bottom: 20px;
+        }
+        
+        .sanctuary-welcome h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+        
+        .sanctuary-welcome p {
+            color: rgba(255, 223, 186, 0.9);
+            line-height: 1.6;
+        }
+        
+        /* Input area - Prayer altar */
+        .prayer-altar {
+            background: linear-gradient(180deg, rgba(26, 26, 46, 0.95), rgba(15, 15, 30, 0.95));
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 223, 186, 0.2);
+            padding: 20px;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .altar-container {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+        }
+        
+        .prayer-input-wrapper {
+            flex: 1;
+            background: rgba(255, 248, 225, 0.1);
+            border: 1px solid rgba(255, 223, 186, 0.3);
+            border-radius: 12px;
+            padding: 12px 15px;
+            transition: all 0.3s;
+        }
+        
+        .prayer-input-wrapper:focus-within {
+            background: rgba(255, 248, 225, 0.15);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.2);
+        }
+        
+        .prayer-input {
+            width: 100%;
+            background: none;
+            border: none;
+            color: #ffd700;
+            font-size: 15px;
+            font-family: 'Georgia', serif;
+            outline: none;
+            resize: none;
+        }
+        
+        .prayer-input::placeholder {
+            color: rgba(255, 223, 186, 0.5);
+        }
+        
+        .prayer-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .altar-button {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 193, 7, 0.2));
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            color: #ffd700;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Georgia', serif;
+        }
+        
+        .altar-button:hover {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 193, 7, 0.3));
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .send-prayer {
+            background: linear-gradient(135deg, #ffd700, #ffb300);
+            color: #1a1a2e;
+            font-weight: 600;
+        }
+        
+        .send-prayer:hover {
+            background: linear-gradient(135deg, #ffed4e, #ffc947);
+        }
+        
+        /* Prayer type indicator */
+        .prayer-type {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            padding: 5px 10px;
+            background: rgba(26, 26, 46, 0.8);
+            border-radius: 20px;
+        }
+        
+        .type-option {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: rgba(255, 223, 186, 0.6);
+        }
+        
+        .type-option.active {
+            background: rgba(255, 215, 0, 0.2);
+            color: #ffd700;
+        }
+    </style>
+</head>
+<body>
+    <!-- Ambient candle lights -->
+    <div class="candle-light"></div>
+    <div class="candle-light"></div>
+    <div class="candle-light"></div>
+    <div class="candle-light"></div>
+    
+    <!-- Header -->
+    <div class="sanctuary-header">
+        <h1 class="sanctuary-title">✝ THE WAY ✝</h1>
+        <p class="sanctuary-verse">"Enter through the narrow gate" - Matthew 7:13</p>
+        <div class="souls-present">
+            <div class="soul-indicator"></div>
+            <span>12 souls present</span>
+        </div>
+    </div>
+    
+    <!-- Prayer Wall -->
+    <div class="prayer-wall">
+        <!-- Welcome Message -->
+        <div class="sanctuary-welcome">
+            <h2>Welcome to This Sacred Space</h2>
+            <p>Where hearts unite in prayer and fellowship</p>
+            <p style="margin-top: 10px; font-size: 14px; font-style: italic;">
+                "Again I say unto you, that if two of you shall agree on earth as touching any thing that they shall ask,<br>
+                it shall be done for them of my Father which is in heaven." - Matthew 18:19
+            </p>
+        </div>
+        
+        <!-- Prayer Notes -->
+        <div class="prayer-note">
+            <div class="note-header">
+                <span class="note-author">Sister Katherine</span>
+                <span class="note-time">10 minutes ago</span>
+            </div>
+            <div class="note-content">
+                Beloved family, I come before you with a heart full of gratitude. The Lord has been so faithful in my journey. 
+                Let us remember to count our blessings even in the midst of trials. His grace is sufficient! 🕊️
+            </div>
+            <div class="prayer-warriors">
+                <div class="warrior-count">🙏 8 Amens</div>
+                <div class="warrior-count">❤️ 5 Hearts</div>
+            </div>
+        </div>
+        
+        <div class="prayer-note prayer-request-note">
+            <div class="note-header">
+                <span class="note-author">Brother Michael</span>
+                <span class="note-time">25 minutes ago</span>
+            </div>
+            <div class="note-content">
+                Dear brothers and sisters, I humbly ask for your prayers. My family is going through a difficult season. 
+                My father has been diagnosed with a serious illness. Please pray for healing, strength, and peace that surpasses all understanding.
+                We believe in the power of prayer and God's miraculous healing.
+            </div>
+            <div class="prayer-warriors">
+                <div class="warrior-count">🙏 15 Praying</div>
+                <div class="warrior-count">💪 7 Strength</div>
+                <div class="warrior-count">✨ 4 Faith</div>
+            </div>
+        </div>
+        
+        <div class="prayer-note praise-note">
+            <div class="note-header">
+                <span class="note-author">Sister Joy</span>
+                <span class="note-time">1 hour ago</span>
+            </div>
+            <div class="note-content">
+                PRAISE REPORT! 🎉 Remember the job interview I asked prayer for last week? 
+                God has opened the door! I got the position! Thank you all for standing with me in prayer. 
+                Our God is faithful! "Ask and it shall be given unto you!"
+            </div>
+            <div class="prayer-warriors">
+                <div class="warrior-count">🎉 12 Hallelujah</div>
+                <div class="warrior-count">🙌 9 Praise</div>
+                <div class="warrior-count">❤️ 10 Love</div>
+            </div>
+        </div>
+        
+        <div class="prayer-note">
+            <div class="note-header">
+                <span class="note-author">Pastor David</span>
+                <span class="note-time">2 hours ago</span>
+            </div>
+            <div class="note-content">
+                Family, let us meditate on Philippians 4:6-7 today: "Do not be anxious about anything, but in every situation, 
+                by prayer and petition, with thanksgiving, present your requests to God. And the peace of God, which transcends 
+                all understanding, will guard your hearts and your minds in Christ Jesus." 
+                
+                Remember, you are never alone in your struggles. We stand together in faith. 🕊️
+            </div>
+            <div class="prayer-warriors">
+                <div class="warrior-count">🙏 18 Amens</div>
+                <div class="warrior-count">📖 6 Word</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Prayer Altar (Input) -->
+    <div class="prayer-altar">
+        <div class="prayer-type">
+            <span class="type-option active">Message</span>
+            <span class="type-option">Prayer Request</span>
+            <span class="type-option">Praise Report</span>
+            <span class="type-option">Scripture</span>
+        </div>
+        <div class="altar-container">
+            <div class="prayer-input-wrapper">
+                <textarea class="prayer-input" placeholder="Share your heart, lift up a prayer, or encourage a soul..." rows="2"></textarea>
+            </div>
+            <div class="prayer-actions">
+                <button class="altar-button">📖</button>
+                <button class="altar-button">🕊️</button>
+                <button class="altar-button send-prayer">Lift Up</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
