@@ -55,10 +55,20 @@
   });
   
   function setupRealtimeSubscriptions() {
+    // Clean up existing subscription first
+    if (subscription) {
+      supabase.removeChannel(subscription);
+    }
+    
     subscription = supabase
-      .channel('the-way-illuminated')
+      .channel(`room-${currentRoom.id}`)
       .on('postgres_changes', 
-        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'chat_messages',
+          filter: `room=eq.${currentRoom.id}`
+        },
         (payload) => {
           console.log('New message received:', payload);
           messages = [...messages, payload.new];
@@ -66,7 +76,12 @@
         }
       )
       .on('postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'chat_messages' },
+        { 
+          event: 'DELETE', 
+          schema: 'public', 
+          table: 'chat_messages',
+          filter: `room=eq.${currentRoom.id}`
+        },
         (payload) => {
           messages = messages.filter(m => m.id !== payload.old.id);
         }
@@ -169,7 +184,7 @@
         room: currentRoom.id,
         user_id: user.id,
         user_name: user.user_metadata?.name || user.email?.split('@')[0],
-        message: newMessage,
+        message: newMessage.trim(),
         is_prayer_request: isPrayerRequest
       });
     
@@ -219,6 +234,7 @@
     currentRoom = room;
     messages = [];
     loadMessages();
+    setupRealtimeSubscriptions(); // Re-subscribe to new room
   }
   
   function formatTime(date: string) {
