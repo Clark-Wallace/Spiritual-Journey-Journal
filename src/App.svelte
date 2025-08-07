@@ -51,9 +51,17 @@
         <h1>🕊️ Spiritual Journey</h1>
         <p class="tagline">Welcome, {$userInfo?.name}!</p>
       </div>
-      <button class="logout-btn" on:click={() => authStore.signOut()}>
-        Sign Out
-      </button>
+      <div class="header-buttons">
+        <button 
+          class="donate-btn" 
+          on:click={() => window.open('https://donate.stripe.com/your-donation-link', '_blank')}
+        >
+          💝 Donate
+        </button>
+        <button class="logout-btn" on:click={() => authStore.signOut()}>
+          Sign Out
+        </button>
+      </div>
     </div>
   </header>
   
@@ -184,6 +192,12 @@
     font-style: italic;
   }
   
+  .header-buttons {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  
   .logout-btn {
     padding: 0.5rem 1rem;
     background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 193, 7, 0.2));
@@ -199,6 +213,35 @@
     background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 193, 7, 0.3));
     box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
     transform: translateY(-2px);
+  }
+  
+  .donate-btn {
+    padding: 0.5rem 1rem;
+    background: linear-gradient(135deg, rgba(255, 105, 180, 0.2), rgba(255, 20, 147, 0.2));
+    color: var(--text-divine);
+    border: 1px solid rgba(255, 105, 180, 0.5);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all var(--transition-normal);
+    animation: pulse-glow 2s infinite;
+  }
+  
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 10px rgba(255, 105, 180, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 20px rgba(255, 105, 180, 0.5);
+    }
+  }
+  
+  .donate-btn:hover {
+    background: linear-gradient(135deg, rgba(255, 105, 180, 0.4), rgba(255, 20, 147, 0.4));
+    box-shadow: 0 0 30px rgba(255, 105, 180, 0.6);
+    transform: translateY(-2px) scale(1.05);
+    border-color: rgba(255, 105, 180, 0.8);
   }
   
   nav {
