@@ -13,6 +13,7 @@
   let userStatus: 'online' | 'praying' | 'reading' | 'away' = 'online';
   let subscription: any;
   let presenceSubscription: any;
+  let isMobile = false;
   
   // Chat rooms
   interface ChatRoom {
@@ -39,6 +40,12 @@
   };
   
   onMount(async () => {
+    // Check if mobile
+    isMobile = window.innerWidth <= 768;
+    window.addEventListener('resize', () => {
+      isMobile = window.innerWidth <= 768;
+    });
+    
     await loadMessages();
     await updatePresence();
     setupRealtimeSubscriptions();
@@ -660,15 +667,17 @@
           rows="2"
         ></textarea>
         <div class="altar-tools">
-          <VoiceRecorder
-            placeholder="Speak your message..."
-            on:transcription={handleVoiceTranscription}
-            on:error={handleVoiceError}
-          />
+          {#if !isMobile}
+            <VoiceRecorder
+              placeholder="Speak your message..."
+              on:transcription={handleVoiceTranscription}
+              on:error={handleVoiceError}
+            />
+          {/if}
           <button class="altar-tool" title="Add Scripture">📜</button>
           <button class="altar-tool" title="Mark as Prayer">🕊️</button>
           <button class="altar-tool send-prayer" on:click={sendMessage}>
-            <span>Lift Up</span>
+            <span class="send-text">Lift Up</span>
             <span class="send-icon">✨</span>
           </button>
         </div>
@@ -1474,6 +1483,33 @@
     .chamber-portal {
       padding: 8px 12px;
       font-size: 12px;
+    }
+    
+    /* Fix altar tools layout on mobile */
+    .altar-tools {
+      gap: 6px;
+    }
+    
+    .altar-tool {
+      font-size: 18px;
+      padding: 4px;
+    }
+    
+    .send-prayer {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+    
+    .send-text {
+      display: inline;
+    }
+    
+    .prayer-altar {
+      padding: 12px 15px;
+    }
+    
+    .altar-vessel {
+      padding: 10px 12px;
     }
     
     .chamber-icon {

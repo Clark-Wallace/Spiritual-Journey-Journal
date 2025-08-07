@@ -13,11 +13,21 @@
   let shareType: 'post' | 'prayer' | 'testimony' | 'praise' = 'post';
   let shareAnonymously = false;
   let activeVoiceField: 'content' | 'prayer' | null = null;
+  let isMobile = false;
   
   const moods: JournalEntry['mood'][] = [
     'grateful', 'peaceful', 'joyful', 'hopeful', 
     'reflective', 'troubled', 'anxious', 'seeking'
   ];
+  
+  // Check if mobile on mount
+  import { onMount } from 'svelte';
+  onMount(() => {
+    isMobile = window.innerWidth <= 768;
+    window.addEventListener('resize', () => {
+      isMobile = window.innerWidth <= 768;
+    });
+  });
   
   const moodEmojis = {
     grateful: '🙏',
@@ -160,7 +170,7 @@
         bind:value={content}
         rows="4"
       ></textarea>
-      {#if !activeVoiceField || activeVoiceField === 'content'}
+      {#if !isMobile && (!activeVoiceField || activeVoiceField === 'content')}
         <div class="voice-button-wrapper">
           <VoiceRecorder
             placeholder="Speak your thoughts..."
@@ -184,7 +194,7 @@
         bind:value={prayer}
         rows="3"
       ></textarea>
-      {#if !activeVoiceField || activeVoiceField === 'prayer'}
+      {#if !isMobile && (!activeVoiceField || activeVoiceField === 'prayer')}
         <div class="voice-button-wrapper">
           <VoiceRecorder
             placeholder="Speak your prayer..."

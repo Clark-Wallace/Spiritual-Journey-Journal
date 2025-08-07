@@ -11,10 +11,20 @@
   let encouragement = '';
   let useAI = true; // Toggle between AI and keyword matching
   let showGuidanceModal = false; // Show popup modal for AI guidance
+  let isMobile = false;
   
   let selectedScroll: LivingScroll | null = null;
   let selectedPart: ScrollPart | null = null;
   let expandedParts: Set<number> = new Set();
+  
+  // Check if mobile on mount
+  import { onMount } from 'svelte';
+  onMount(() => {
+    isMobile = window.innerWidth <= 768;
+    window.addEventListener('resize', () => {
+      isMobile = window.innerWidth <= 768;
+    });
+  });
   
   // Get recent journal entry for context
   $: recentEntry = $journalEntries[0];
@@ -247,13 +257,15 @@
         rows="4"
         disabled={loading}
       ></textarea>
-      <div class="voice-button-wrapper">
-        <VoiceRecorder
-          placeholder="Speak your situation..."
-          on:transcription={handleVoiceTranscription}
-          on:error={handleVoiceError}
-        />
-      </div>
+      {#if !isMobile}
+        <div class="voice-button-wrapper">
+          <VoiceRecorder
+            placeholder="Speak your situation..."
+            on:transcription={handleVoiceTranscription}
+            on:error={handleVoiceError}
+          />
+        </div>
+      {/if}
     </div>
     
     <button 
