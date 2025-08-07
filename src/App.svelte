@@ -54,7 +54,7 @@
       <div class="header-buttons">
         <button 
           class="donate-btn" 
-          on:click={() => window.open('https://www.buymeacoffee.com/your-username', '_blank')}
+          on:click={() => window.open('https://buymeacoffee.com/clarkwallace', '_blank')}
         >
           ☕ Buy Me a Coffee
         </button>
