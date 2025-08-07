@@ -2,6 +2,7 @@
   import { livingScrollsData, type LivingScroll, type ScrollPart } from '../livingScrollsData';
   import { authStore } from '../stores/auth';
   import { journalEntries } from '../stores';
+  import VoiceRecorder from './VoiceRecorder.svelte';
   
   let scenario = '';
   let loading = false;
@@ -205,6 +206,16 @@
   function closeGuidanceModal() {
     showGuidanceModal = false;
   }
+  
+  function handleVoiceTranscription(event: CustomEvent) {
+    const { text } = event.detail;
+    scenario = scenario ? `${scenario} ${text}` : text;
+  }
+  
+  function handleVoiceError(event: CustomEvent) {
+    console.error('Voice recording error:', event.detail.message);
+    alert(event.detail.message);
+  }
 </script>
 
 <div class="scripture-guide">
@@ -227,14 +238,23 @@
       </small>
     </div>
     
-    <textarea
-      bind:value={scenario}
-      placeholder={useAI 
-        ? "Share what's on your heart, and I'll provide scripture, prayer, and guidance..." 
-        : "Describe what you're going through and receive scripture guidance..."}
-      rows="4"
-      disabled={loading}
-    ></textarea>
+    <div class="input-with-voice">
+      <textarea
+        bind:value={scenario}
+        placeholder={useAI 
+          ? "Share what's on your heart, and I'll provide scripture, prayer, and guidance..." 
+          : "Describe what you're going through and receive scripture guidance..."}
+        rows="4"
+        disabled={loading}
+      ></textarea>
+      <div class="voice-button-wrapper">
+        <VoiceRecorder
+          placeholder="Speak your situation..."
+          on:transcription={handleVoiceTranscription}
+          on:error={handleVoiceError}
+        />
+      </div>
+    </div>
     
     <button 
       class="submit-btn" 
@@ -616,6 +636,19 @@
     margin-left: 1.75rem;
     color: #718096;
     font-size: 0.85rem;
+  }
+  
+  .input-with-voice {
+    position: relative;
+  }
+  
+  .voice-button-wrapper {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(245, 247, 250, 0.95);
+    border-radius: 50%;
+    padding: 5px;
   }
   
   .verse-header {
