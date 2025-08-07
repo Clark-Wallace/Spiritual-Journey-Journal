@@ -3,6 +3,7 @@
   import { supabase, getCurrentUser } from '../supabase';
   import { authStore, userInfo } from '../stores/auth';
   import { currentView } from '../stores';
+  import VoiceRecorder from './VoiceRecorder.svelte';
   
   let messages: any[] = [];
   let onlineUsers: any[] = [];
@@ -367,6 +368,16 @@
     // Navigate away
     currentView.set('home');
   }
+  
+  function handleVoiceTranscription(event: CustomEvent) {
+    const { text } = event.detail;
+    newMessage = newMessage ? `${newMessage} ${text}` : text;
+  }
+  
+  function handleVoiceError(event: CustomEvent) {
+    console.error('Voice recording error:', event.detail.message);
+    alert(event.detail.message);
+  }
 </script>
 
 <div class="sanctuary-container">
@@ -562,6 +573,11 @@
           rows="2"
         ></textarea>
         <div class="altar-tools">
+          <VoiceRecorder
+            placeholder="Speak your message..."
+            on:transcription={handleVoiceTranscription}
+            on:error={handleVoiceError}
+          />
           <button class="altar-tool" title="Add Scripture">📜</button>
           <button class="altar-tool" title="Mark as Prayer">🕊️</button>
           <button class="altar-tool send-prayer" on:click={sendMessage}>

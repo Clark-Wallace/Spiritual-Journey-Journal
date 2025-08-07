@@ -2,6 +2,7 @@
   import { journalEntries } from '../stores';
   import { shareToCommunity } from '../supabase';
   import type { JournalEntry } from '../types';
+  import VoiceRecorder from './VoiceRecorder.svelte';
   
   let mood: JournalEntry['mood'] = undefined;
   let gratitude = ['', '', ''];
@@ -11,6 +12,7 @@
   let shareToFeed = false;
   let shareType: 'post' | 'prayer' | 'testimony' | 'praise' = 'post';
   let shareAnonymously = false;
+  let activeVoiceField: 'content' | 'prayer' | null = null;
   
   const moods: JournalEntry['mood'][] = [
     'grateful', 'peaceful', 'joyful', 'hopeful', 
@@ -96,6 +98,22 @@
       alert(`Failed to save entry: ${errorMessage}\n\nPlease check the console for details.`);
     }
   }
+  
+  function handleVoiceTranscription(event: CustomEvent, field: 'content' | 'prayer') {
+    const { text } = event.detail;
+    if (field === 'content') {
+      content = content ? `${content} ${text}` : text;
+    } else if (field === 'prayer') {
+      prayer = prayer ? `${prayer} ${text}` : text;
+    }
+    activeVoiceField = null;
+  }
+  
+  function handleVoiceError(event: CustomEvent) {
+    console.error('Voice recording error:', event.detail.message);
+    alert(event.detail.message);
+    activeVoiceField = null;
+  }
 </script>
 
 <div class="journal-form-illuminated">
@@ -135,12 +153,23 @@
   
   <div class="form-section">
     <label class="section-label">Pour out your heart</label>
-    <textarea
-      class="journal-textarea"
-      placeholder="What's on your heart today? Let it flow..."
-      bind:value={content}
-      rows="4"
-    ></textarea>
+    <div class="input-with-voice">
+      <textarea
+        class="journal-textarea"
+        placeholder="What's on your heart today? Let it flow..."
+        bind:value={content}
+        rows="4"
+      ></textarea>
+      {#if !activeVoiceField || activeVoiceField === 'content'}
+        <div class="voice-button-wrapper">
+          <VoiceRecorder
+            placeholder="Speak your thoughts..."
+            on:transcription={(e) => handleVoiceTranscription(e, 'content')}
+            on:error={handleVoiceError}
+          />
+        </div>
+      {/if}
+    </div>
   </div>
   
   <div class="form-section prayer-section">
@@ -148,12 +177,23 @@
       <span class="prayer-icon">🙏</span>
       Prayer Corner
     </label>
-    <textarea
-      class="prayer-textarea"
-      placeholder="Talk to God... This sacred space is between you and Him"
-      bind:value={prayer}
-      rows="3"
-    ></textarea>
+    <div class="input-with-voice">
+      <textarea
+        class="prayer-textarea"
+        placeholder="Talk to God... This sacred space is between you and Him"
+        bind:value={prayer}
+        rows="3"
+      ></textarea>
+      {#if !activeVoiceField || activeVoiceField === 'prayer'}
+        <div class="voice-button-wrapper">
+          <VoiceRecorder
+            placeholder="Speak your prayer..."
+            on:transcription={(e) => handleVoiceTranscription(e, 'prayer')}
+            on:error={handleVoiceError}
+          />
+        </div>
+      {/if}
+    </div>
     <div class="prayer-option">
       <label class="checkbox-label">
         <input 
@@ -383,6 +423,19 @@
   .prayer-textarea {
     background: rgba(138, 43, 226, 0.03);
     border-color: rgba(138, 43, 226, 0.3);
+  }
+  
+  .input-with-voice {
+    position: relative;
+  }
+  
+  .voice-button-wrapper {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(15, 15, 30, 0.9);
+    border-radius: 50%;
+    padding: 5px;
   }
   
   .prayer-option {
