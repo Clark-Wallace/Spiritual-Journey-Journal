@@ -680,6 +680,7 @@
               on:transcription={handleVoiceTranscription}
               on:error={handleVoiceError}
             />
+            <button class="altar-tool" title="Add Scripture (Coming Soon)" disabled>📜</button>
           {/if}
           <button class="altar-tool send-prayer" on:click={sendMessage} aria-label="Send message">
             {#if isMobile}
@@ -1459,10 +1460,30 @@
     transition: all 0.3s;
   }
   
-  .altar-tool:hover {
+  .altar-tool:hover:not(:disabled) {
     color: var(--text-divine);
     transform: scale(1.2);
     filter: drop-shadow(0 0 10px currentColor);
+  }
+  
+  .altar-tool:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .altar-tool:disabled:hover::after {
+    content: "Coming Soon!";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: var(--text-divine);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    pointer-events: none;
   }
   
   .send-prayer {
