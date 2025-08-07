@@ -25,7 +25,7 @@
     { id: 'prayer', name: 'Prayer Chamber', icon: '🙏' },
     { id: 'scripture', name: 'Scripture Study', icon: '📖' },
     { id: 'testimony', name: 'Testimony', icon: '✨' },
-    { id: 'worship', name: 'Worship', icon: '🎵' }
+    { id: 'debate', name: 'Debate Room', icon: '⚖️' }
   ];
   
   let currentRoom = rooms[0];
@@ -401,11 +401,20 @@
     </div>
     
     <div class="sacred-scrolls">
-      <div class="section-divider">Sacred Covenant</div>
-      <div class="scroll-item">Love one another as He loved us</div>
-      <div class="scroll-item">Bear each other's burdens</div>
-      <div class="scroll-item">Encourage with psalms & hymns</div>
-      <div class="scroll-item">Speak truth wrapped in grace</div>
+      <div class="section-divider">
+        {currentRoom.id === 'debate' ? 'Rules of Engagement' : 'Sacred Covenant'}
+      </div>
+      {#if currentRoom.id === 'debate'}
+        <div class="scroll-item">⚖️ Seek understanding, not victory</div>
+        <div class="scroll-item">📜 Ground arguments in Scripture</div>
+        <div class="scroll-item">🤝 Respect opposing viewpoints</div>
+        <div class="scroll-item">✨ Truth with grace & humility</div>
+      {:else}
+        <div class="scroll-item">Love one another as He loved us</div>
+        <div class="scroll-item">Bear each other's burdens</div>
+        <div class="scroll-item">Encourage with psalms & hymns</div>
+        <div class="scroll-item">Speak truth wrapped in grace</div>
+      {/if}
     </div>
     
     <div class="status-selector">
