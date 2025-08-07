@@ -54,9 +54,9 @@
       <div class="header-buttons">
         <button 
           class="donate-btn" 
-          on:click={() => window.open('https://donate.stripe.com/your-donation-link', '_blank')}
+          on:click={() => window.open('https://www.buymeacoffee.com/your-username', '_blank')}
         >
-          💝 Donate
+          ☕ Buy Me a Coffee
         </button>
         <button class="logout-btn" on:click={() => authStore.signOut()}>
           Sign Out
