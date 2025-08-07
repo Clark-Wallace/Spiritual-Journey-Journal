@@ -47,7 +47,7 @@
   <header>
     <div class="header-content">
       <div>
-        <h1>🕊️ Spiritual Journey Journal</h1>
+        <h1>🕊️ Spiritual Journey</h1>
         <p class="tagline">Welcome, {$userInfo?.name}!</p>
       </div>
       <button class="logout-btn" on:click={() => authStore.signOut()}>

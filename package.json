@@ -1,5 +1,6 @@
 {
-  "name": "svelte-app",
+  "name": "spiritual-journey",
+  "description": "A faith-based platform for spiritual growth, journaling, prayer, and Christian fellowship",
   "private": true,
   "version": "1.0.0",
   "type": "module",

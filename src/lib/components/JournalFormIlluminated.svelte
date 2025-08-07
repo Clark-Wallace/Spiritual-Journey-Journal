@@ -37,7 +37,7 @@
     }
     
     try {
-      await journalEntries.addEntry({
+      const journalEntry = await journalEntries.addEntry({
         date: new Date(),
         mood,
         gratitude: validGratitude,
@@ -47,7 +47,7 @@
       
       // If sharing to community feed
       if (shareToFeed) {
-        await shareToCommunity({
+        const communityPost = await shareToCommunity({
           mood,
           gratitude: validGratitude,
           content,
@@ -55,6 +55,15 @@
           shareType,
           isAnonymous: shareAnonymously
         });
+        
+        // Show specific feedback for sharing
+        if (communityPost) {
+          alert('Entry saved to your journal and shared with the community! 🎉✨');
+        } else {
+          alert('Entry saved to your journal, but sharing failed. Try sharing from Community later.');
+        }
+      } else {
+        alert('Entry saved to your private journal! 📔');
       }
       
       // Reset form
@@ -66,8 +75,6 @@
       shareToFeed = false;
       shareType = 'post';
       shareAnonymously = false;
-      
-      alert('Entry saved! 🎉');
     } catch (error) {
       console.error('Error saving entry:', error);
       alert('Failed to save entry. Please try again.');
@@ -179,7 +186,7 @@
         </label>
         
         <small class="share-note">
-          Your heart's overflow will bless and encourage the community
+          ⚠️ When shared, your entry will be visible to all community members for prayer and encouragement
         </small>
       </div>
     {/if}

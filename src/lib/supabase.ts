@@ -189,6 +189,7 @@ export const shareToCommunity = async (post: {
   prayer?: string;
   shareType: 'post' | 'prayer' | 'testimony' | 'praise';
   isAnonymous: boolean;
+  journalEntryId?: string; // Link to original journal entry
 }) => {
   const user = await getCurrentUser();
   if (!user) throw new Error('User not authenticated');
@@ -204,6 +205,7 @@ export const shareToCommunity = async (post: {
       prayer: post.prayer,
       is_anonymous: post.isAnonymous,
       share_type: post.shareType
+      // Removed journal_entry_id and source_type until database is updated
     })
     .select()
     .single();

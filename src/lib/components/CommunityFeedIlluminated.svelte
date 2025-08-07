@@ -5,10 +5,7 @@
   
   let posts: any[] = [];
   let loading = true;
-  let filter: 'all' | 'prayer' | 'testimony' | 'praise' | 'post' = 'all';
-  let newPostContent = '';
-  let showNewPost = false;
-  let shareType: 'post' | 'prayer' | 'testimony' | 'praise' = 'post';
+  let filter: 'all' | 'prayer' | 'testimony' | 'praise' | 'post' | 'my-posts' = 'all';
   let expandedComments: Set<string> = new Set();
   let commentInputs: Map<string, string> = new Map();
   
@@ -68,11 +65,21 @@
           is_urgent,
           is_answered,
           prayer_warriors (count)
+        ),
+        journal_entries (
+          id,
+          date,
+          mood
         )
       `)
       .order('created_at', { ascending: false });
     
-    if (filter !== 'all') {
+    if (filter === 'my-posts') {
+      const user = await authStore.getUser();
+      if (user) {
+        query = query.eq('user_id', user.id);
+      }
+    } else if (filter !== 'all') {
       query = query.eq('share_type', filter);
     }
     
@@ -85,29 +92,6 @@
     }
     
     loading = false;
-  }
-  
-  async function createPost() {
-    if (!newPostContent.trim()) return;
-    
-    const user = await authStore.getUser();
-    if (!user) return;
-    
-    const { error } = await supabase
-      .from('community_posts')
-      .insert({
-        user_id: user.id,
-        user_name: $userInfo?.name || user.email?.split('@')[0],
-        content: newPostContent,
-        share_type: shareType,
-        is_anonymous: false
-      });
-    
-    if (!error) {
-      newPostContent = '';
-      showNewPost = false;
-      await loadPosts();
-    }
   }
   
   async function addReaction(postId: string, reactionType: string) {
@@ -195,67 +179,12 @@
 </script>
 
 <div class="community-container">
-  <!-- Create Post Section -->
-  <div class="create-post-card">
-    {#if !showNewPost}
-      <button class="create-post-trigger" on:click={() => showNewPost = true}>
-        <div class="avatar-glow">
-          {#if $userInfo?.name}
-            {getInitials($userInfo.name)}
-          {:else}
-            ✝️
-          {/if}
-        </div>
-        <span class="create-prompt">Share what's on your heart...</span>
-      </button>
-    {:else}
-      <div class="new-post-form">
-        <div class="post-type-selector">
-          <button 
-            class:active={shareType === 'post'}
-            on:click={() => shareType = 'post'}
-          >
-            💭 Thought
-          </button>
-          <button 
-            class:active={shareType === 'prayer'}
-            on:click={() => shareType = 'prayer'}
-          >
-            🙏 Prayer
-          </button>
-          <button 
-            class:active={shareType === 'testimony'}
-            on:click={() => shareType = 'testimony'}
-          >
-            ✨ Testimony
-          </button>
-          <button 
-            class:active={shareType === 'praise'}
-            on:click={() => shareType = 'praise'}
-          >
-            🎉 Praise
-          </button>
-        </div>
-        
-        <textarea 
-          bind:value={newPostContent}
-          placeholder={shareType === 'prayer' ? 'Share your prayer request...' : 
-                      shareType === 'testimony' ? 'Share your testimony...' :
-                      shareType === 'praise' ? 'Share your praise report...' :
-                      'What is God doing in your life?'}
-          rows="3"
-        ></textarea>
-        
-        <div class="post-actions-bar">
-          <button class="cancel-btn" on:click={() => { showNewPost = false; newPostContent = ''; }}>
-            Cancel
-          </button>
-          <button class="submit-btn" on:click={createPost}>
-            Share with Community
-          </button>
-        </div>
-      </div>
-    {/if}
+  <!-- Info Banner -->
+  <div class="community-info-banner">
+    <div class="banner-content">
+      <h3>🌟 Community Fellowship</h3>
+      <p>View and interact with posts shared by the community. To share your own journey, use the Journal feature.</p>
+    </div>
   </div>
   
   <!-- Filter Tabs -->
@@ -266,6 +195,13 @@
     >
       <span class="tab-icon">✨</span>
       <span>All Posts</span>
+    </button>
+    <button 
+      class:active={filter === 'my-posts'} 
+      on:click={() => { filter = 'my-posts'; loadPosts(); }}
+    >
+      <span class="tab-icon">📔</span>
+      <span>My Posts</span>
     </button>
     <button 
       class:active={filter === 'prayer'} 
@@ -289,6 +225,12 @@
       <span>Praise</span>
     </button>
   </div>
+  
+  {#if filter === 'my-posts' && posts.length > 0}
+    <div class="my-posts-info">
+      <p>📔 Posts you've shared with the community</p>
+    </div>
+  {/if}
   
   <!-- Posts Feed -->
   {#if loading}
@@ -455,126 +397,29 @@
     padding: 1rem;
   }
   
-  /* Create Post Card */
-  .create-post-card {
+  /* Community Info Banner */
+  .community-info-banner {
     background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 193, 7, 0.05));
     border: 1px solid var(--border-gold);
     border-radius: 12px;
-    padding: 1rem;
+    padding: 1.5rem;
     margin-bottom: 1.5rem;
     backdrop-filter: blur(10px);
+    text-align: center;
   }
   
-  .create-post-trigger {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    width: 100%;
-    padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-gold);
-    border-radius: 25px;
-    cursor: pointer;
-    transition: all 0.3s;
-  }
-  
-  .create-post-trigger:hover {
-    background: rgba(255, 215, 0, 0.1);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.2);
-  }
-  
-  .avatar-glow {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(255, 215, 0, 0.3), rgba(138, 43, 226, 0.3));
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .banner-content h3 {
     color: var(--text-divine);
-    font-weight: bold;
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+    margin: 0 0 0.5rem 0;
+    font-size: 1.3rem;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
   }
   
-  .create-prompt {
+  .banner-content p {
     color: var(--text-scripture);
+    margin: 0;
     font-style: italic;
-  }
-  
-  .new-post-form {
-    animation: fadeIn 0.3s ease-out;
-  }
-  
-  .post-type-selector {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-  }
-  
-  .post-type-selector button {
-    padding: 0.5rem 1rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-gold);
-    border-radius: 20px;
-    color: var(--text-holy);
-    cursor: pointer;
-    transition: all 0.3s;
-  }
-  
-  .post-type-selector button.active {
-    background: linear-gradient(135deg, var(--primary-gold), #ffb300);
-    color: var(--bg-dark);
-    border-color: transparent;
-  }
-  
-  .new-post-form textarea {
-    width: 100%;
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-gold);
-    border-radius: 8px;
-    color: var(--text-light);
-    font-family: inherit;
-    font-size: 1rem;
-    resize: vertical;
-  }
-  
-  .new-post-form textarea::placeholder {
-    color: var(--text-scripture);
-  }
-  
-  .post-actions-bar {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    margin-top: 1rem;
-  }
-  
-  .cancel-btn {
-    padding: 0.5rem 1rem;
-    background: transparent;
-    border: 1px solid var(--border-gold);
-    border-radius: 6px;
-    color: var(--text-holy);
-    cursor: pointer;
-    transition: all 0.3s;
-  }
-  
-  .submit-btn {
-    padding: 0.5rem 1.5rem;
-    background: linear-gradient(135deg, var(--primary-gold), #ffb300);
-    border: none;
-    border-radius: 6px;
-    color: var(--bg-dark);
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s;
-  }
-  
-  .submit-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-divine-strong);
+    font-size: 0.95rem;
   }
   
   /* Filter Tabs */
@@ -617,6 +462,31 @@
   
   .tab-icon {
     font-size: 1.2rem;
+  }
+  
+  .my-posts-info {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 193, 7, 0.05));
+    border: 1px solid var(--border-gold);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+  
+  .my-posts-info p {
+    color: var(--text-divine);
+    margin: 0;
+    font-style: italic;
+  }
+  
+  .journal-indicator {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 193, 7, 0.1));
+    color: var(--text-divine);
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid var(--border-gold);
   }
   
   /* Posts Feed */
