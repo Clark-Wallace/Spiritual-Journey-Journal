@@ -92,10 +92,20 @@
         console.log('Subscription status:', status);
       });
     
+    // Clean up existing presence subscription first
+    if (presenceSubscription) {
+      supabase.removeChannel(presenceSubscription);
+    }
+    
     presenceSubscription = supabase
-      .channel('online-souls')
+      .channel(`room-presence-${currentRoom.id}`)
       .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'user_presence' },
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'user_presence',
+          filter: `current_room=eq.${currentRoom.id}`
+        },
         () => loadOnlineUsers()
       )
       .subscribe();
@@ -140,14 +150,17 @@
   async function loadOnlineUsers() {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     
+    // Only load users in the current room
     const { data, error } = await supabase
       .from('user_presence')
       .select('*')
+      .eq('current_room', currentRoom.id)
       .gte('last_seen', fiveMinutesAgo)
       .order('last_seen', { ascending: false });
     
     if (!error) {
       onlineUsers = data || [];
+      console.log(`Users in ${currentRoom.name}:`, onlineUsers.length);
     }
   }
   
@@ -159,8 +172,9 @@
       .from('user_presence')
       .upsert({
         user_id: user.id,
-        user_name: user.user_metadata?.name || user.email?.split('@')[0],
+        user_name: $userInfo?.name || user.user_metadata?.name || user.email?.split('@')[0],
         status: userStatus,
+        current_room: currentRoom.id,
         last_seen: new Date().toISOString()
       }, {
         onConflict: 'user_id'
@@ -256,11 +270,20 @@
     }
   }
   
-  function switchRoom(room: ChatRoom) {
+  async function switchRoom(room: ChatRoom) {
     currentRoom = room;
     messages = [];
-    loadMessages();
-    setupRealtimeSubscriptions(); // Re-subscribe to new room
+    onlineUsers = []; // Clear users list immediately for better UX
+    
+    // Update presence to new room
+    await updatePresence();
+    
+    // Load messages and users for new room
+    await loadMessages();
+    await loadOnlineUsers();
+    
+    // Re-subscribe to new room (includes presence subscription)
+    setupRealtimeSubscriptions();
   }
   
   function formatTime(date: string) {
@@ -308,7 +331,7 @@
     </div>
     
     <div class="congregation">
-      <div class="section-divider">Gathered Souls • {onlineUsers.length}</div>
+      <div class="section-divider">In {currentRoom.name} • {onlineUsers.length} {onlineUsers.length === 1 ? 'soul' : 'souls'}</div>
       
       {#each onlineUsers as user}
         <div class="soul-vessel">
