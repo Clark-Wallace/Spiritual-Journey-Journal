@@ -132,6 +132,31 @@
     const user = await authStore.getUser();
     if (!user) return;
     
+    // Find the post
+    const postIndex = posts.findIndex(p => p.id === postId);
+    if (postIndex === -1) return;
+    
+    // Update locally first for immediate feedback
+    const post = posts[postIndex];
+    const existingReactionIndex = post.reactions.findIndex(r => r.reaction === reactionType);
+    
+    if (existingReactionIndex !== -1) {
+      // Increment count for existing reaction type
+      post.reactions[existingReactionIndex].count++;
+    } else {
+      // Add new reaction type
+      post.reactions.push({ reaction: reactionType, count: 1 });
+    }
+    
+    // Add to user's reactions
+    if (!post.user_reactions.includes(reactionType)) {
+      post.user_reactions.push(reactionType);
+    }
+    
+    // Trigger Svelte reactivity
+    posts = posts;
+    
+    // Then persist to database (fire and forget)
     await supabase
       .from('reactions')
       .insert({
@@ -139,8 +164,6 @@
         user_id: user.id,
         reaction_type: reactionType
       });
-    
-    await loadPosts();
   }
   
   async function addComment(postId: string) {
@@ -150,36 +173,72 @@
     const user = await authStore.getUser();
     if (!user) return;
     
+    // Find the post
+    const postIndex = posts.findIndex(p => p.id === postId);
+    if (postIndex === -1) return;
+    
+    // Create new comment object
+    const newComment = {
+      id: crypto.randomUUID(),
+      message: comment,
+      user_name: $userInfo?.name || user.email?.split('@')[0],
+      created_at: new Date().toISOString()
+    };
+    
+    // Update locally for immediate feedback
+    if (!posts[postIndex].encouragements) {
+      posts[postIndex].encouragements = [];
+    }
+    posts[postIndex].encouragements.push(newComment);
+    
+    // Clear input and trigger reactivity
+    commentInputs[postId] = '';
+    posts = posts;
+    
+    // Then persist to database
     const { error } = await supabase
       .from('encouragements')
       .insert({
         post_id: postId,
         user_id: user.id,
-        user_name: $userInfo?.name || user.email?.split('@')[0],
+        user_name: newComment.user_name,
         message: comment
       });
     
     if (error) {
       console.error('Error adding comment:', error);
-      return;
+      // Revert on error
+      posts[postIndex].encouragements.pop();
+      posts = posts;
+      commentInputs[postId] = comment;
     }
-    
-    commentInputs[postId] = '';
-    await loadPosts();
   }
   
   async function commitToPray(prayerId: string) {
     const user = await authStore.getUser();
     if (!user) return;
     
+    // Find the post with this prayer
+    const postIndex = posts.findIndex(p => p.prayer_wall?.[0]?.id === prayerId);
+    if (postIndex === -1) return;
+    
+    // Update locally for immediate feedback
+    if (posts[postIndex].prayer_wall[0].prayer_warriors) {
+      posts[postIndex].prayer_wall[0].prayer_warriors[0].count++;
+    } else {
+      posts[postIndex].prayer_wall[0].prayer_warriors = [{ count: 1 }];
+    }
+    
+    // Trigger reactivity
+    posts = posts;
+    
+    // Then persist to database
     await supabase
       .from('prayer_warriors')
       .insert({
         prayer_id: prayerId,
         user_id: user.id
       });
-    
-    await loadPosts();
   }
   
   function togglePost(postId: string) {

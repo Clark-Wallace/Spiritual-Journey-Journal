@@ -269,7 +269,10 @@
     }
     
     // Find the message and check if user already reacted
-    const message = messages.find(m => m.id === messageId);
+    const messageIndex = messages.findIndex(m => m.id === messageId);
+    if (messageIndex === -1) return;
+    
+    const message = messages[messageIndex];
     const existingReaction = message?.chat_reactions?.find(
       r => r.reaction === reaction && r.user_id === user.id
     );
@@ -287,10 +290,15 @@
       
       if (error) {
         console.error('Error removing reaction:', error);
-      } else {
-        console.log('Reaction removed successfully');
-        await loadMessages();
+        return;
       }
+      
+      // Update locally without reload
+      messages[messageIndex].chat_reactions = message.chat_reactions.filter(
+        r => !(r.reaction === reaction && r.user_id === user.id)
+      );
+      messages = messages; // Trigger Svelte reactivity
+      console.log('Reaction removed successfully');
     } else {
       // Add the reaction if it doesn't exist
       console.log('Adding reaction:', { messageId, reaction, userId: user.id });
@@ -301,14 +309,25 @@
           message_id: messageId,
           user_id: user.id,
           reaction
-        });
+        })
+        .select()
+        .single();
       
       if (error) {
         console.error('Error adding reaction:', error);
-      } else {
-        console.log('Reaction added successfully:', data);
-        await loadMessages();
+        return;
       }
+      
+      // Update locally without reload
+      if (!messages[messageIndex].chat_reactions) {
+        messages[messageIndex].chat_reactions = [];
+      }
+      messages[messageIndex].chat_reactions.push({
+        reaction,
+        user_id: user.id
+      });
+      messages = messages; // Trigger Svelte reactivity
+      console.log('Reaction added successfully:', data);
     }
   }
   
