@@ -1532,6 +1532,8 @@
       flex-direction: column;
       height: 100vh;
       height: 100dvh;
+      position: fixed;
+      overflow: hidden;
     }
     
     .sidebar {
@@ -1545,6 +1547,7 @@
     .sanctuary-ceiling {
       position: relative;
       padding-right: 80px; /* Make room for exit button */
+      flex-shrink: 0; /* Prevent header from shrinking */
     }
     
     .chamber-selection {
@@ -1559,13 +1562,22 @@
     
     /* Mobile chat input improvements */
     .prayer-altar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
       padding: 8px;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0, 0, 0, 0.95);
       border-top: 1px solid var(--border-gold);
+      z-index: 100;
     }
     
     .sacred-chamber {
-      padding-bottom: 70px; /* Space for fixed input */
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+      padding-bottom: 80px; /* Space for fixed input */
+      height: calc(100vh - 120px); /* Account for header and input */
     }
     
     .divine-message {
