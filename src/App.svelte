@@ -3,7 +3,7 @@
   import { onMount } from 'svelte';
   import { currentView, journalEntries } from './lib/stores';
   import { authStore, userInfo } from './lib/stores/auth';
-  import Login from './lib/components/Login.svelte';
+  import PhoneLogin from './lib/components/PhoneLogin.svelte';
   import JournalForm from './lib/components/JournalFormIlluminated.svelte';
   import JournalList from './lib/components/JournalListIlluminated.svelte';
   import JournalListCollapsible from './lib/components/JournalListCollapsible.svelte';
@@ -35,7 +35,7 @@
 </script>
 
 {#if !$authStore}
-  <Login />
+  <PhoneLogin />
 {:else}
 <!-- Light rays for divine atmosphere -->
 <div class="light-rays">
