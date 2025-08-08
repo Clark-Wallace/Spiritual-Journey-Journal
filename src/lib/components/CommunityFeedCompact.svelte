@@ -144,12 +144,28 @@
   }
   
   function processPost(post: any) {
-    // Process post without reactions table for now
-    // Reactions can be loaded separately if needed
+    // Group reactions by type and count them
+    const reactionGroups = {};
+    const userReactions = [];
+    
+    if (post.reactions && Array.isArray(post.reactions)) {
+      post.reactions.forEach(r => {
+        if (!reactionGroups[r.reaction]) {
+          reactionGroups[r.reaction] = { reaction: r.reaction, count: 0, users: [] };
+        }
+        reactionGroups[r.reaction].count++;
+        reactionGroups[r.reaction].users.push(r.user_id);
+        
+        if (r.user_id === $authStore?.id) {
+          userReactions.push(r.reaction);
+        }
+      });
+    }
+    
     return {
       ...post,
-      reactions: [],
-      user_reactions: []
+      reaction_groups: Object.values(reactionGroups),
+      user_reactions: userReactions
     };
   }
 
@@ -163,6 +179,11 @@
       .from('community_posts')
       .select(`
         *,
+        reactions (
+          id,
+          reaction,
+          user_id
+        ),
         encouragements (
           id,
           message,
@@ -186,15 +207,8 @@
     if (error) {
       console.error('Error loading posts:', error);
     } else {
-      // Process posts - reactions will be loaded separately if needed
-      const user = await authStore.getUser();
-      posts = (data || []).map(post => {
-        return {
-          ...post,
-          reactions: [],
-          user_reactions: []
-        };
-      });
+      // Process posts with reactions
+      posts = (data || []).map(post => processPost(post));
       
       // Restore expanded state for posts that still exist
       expandedPosts = new Set([...previouslyExpanded].filter(id => 
@@ -203,6 +217,26 @@
     }
     
     loading = false;
+  }
+  
+  async function toggleReaction(postId: string, reactionType: string) {
+    const user = await authStore.getUser();
+    if (!user) return;
+    
+    // Find the post
+    const postIndex = posts.findIndex(p => p.id === postId);
+    if (postIndex === -1) return;
+    
+    const post = posts[postIndex];
+    const hasReacted = post.user_reactions?.includes(reactionType);
+    
+    if (hasReacted) {
+      // Remove reaction
+      await removeReaction(postId, reactionType);
+    } else {
+      // Add reaction
+      await addReaction(postId, reactionType);
+    }
   }
   
   async function addReaction(postId: string, reactionType: string) {
@@ -215,14 +249,15 @@
     
     // Update locally first for immediate feedback
     const post = posts[postIndex];
-    const existingReactionIndex = post.reactions.findIndex(r => r.reaction === reactionType);
+    const existingReactionIndex = post.reaction_groups.findIndex(r => r.reaction === reactionType);
     
     if (existingReactionIndex !== -1) {
       // Increment count for existing reaction type
-      post.reactions[existingReactionIndex].count++;
+      post.reaction_groups[existingReactionIndex].count++;
+      post.reaction_groups[existingReactionIndex].users.push(user.id);
     } else {
       // Add new reaction type
-      post.reactions.push({ reaction: reactionType, count: 1 });
+      post.reaction_groups.push({ reaction: reactionType, count: 1, users: [user.id] });
     }
     
     // Add to user's reactions
@@ -233,14 +268,62 @@
     // Trigger Svelte reactivity
     posts = posts;
     
-    // Then persist to database (fire and forget)
-    await supabase
+    // Then persist to database
+    const { error } = await supabase
       .from('reactions')
       .insert({
         post_id: postId,
         user_id: user.id,
-        reaction_type: reactionType
+        reaction: reactionType
       });
+    
+    if (error) {
+      console.error('Error adding reaction:', error);
+      // Revert local change on error
+      await loadPosts();
+    }
+  }
+  
+  async function removeReaction(postId: string, reactionType: string) {
+    const user = await authStore.getUser();
+    if (!user) return;
+    
+    // Find the post
+    const postIndex = posts.findIndex(p => p.id === postId);
+    if (postIndex === -1) return;
+    
+    // Update locally first
+    const post = posts[postIndex];
+    const reactionIndex = post.reaction_groups.findIndex(r => r.reaction === reactionType);
+    
+    if (reactionIndex !== -1) {
+      post.reaction_groups[reactionIndex].count--;
+      post.reaction_groups[reactionIndex].users = post.reaction_groups[reactionIndex].users.filter(id => id !== user.id);
+      
+      if (post.reaction_groups[reactionIndex].count === 0) {
+        post.reaction_groups.splice(reactionIndex, 1);
+      }
+    }
+    
+    // Remove from user's reactions
+    post.user_reactions = post.user_reactions.filter(r => r !== reactionType);
+    
+    // Trigger Svelte reactivity
+    posts = posts;
+    
+    // Then remove from database
+    const { error } = await supabase
+      .from('reactions')
+      .delete()
+      .eq('post_id', postId)
+      .eq('user_id', user.id)
+      .eq('reaction', reactionType);
+    
+    if (error) {
+      console.error('Error removing reaction:', error);
+      // Revert local change on error
+      await loadPosts();
+    }
   }
   
   async function addComment(postId: string) {
@@ -388,9 +471,9 @@
       {#each posts as post}
         <div class="post-card" class:expanded={expandedPosts.has(post.id)}>
           <!-- Visual Reactions Bar -->
-          {#if post.reactions && post.reactions.length > 0}
+          {#if post.reaction_groups && post.reaction_groups.length > 0}
             <div class="reactions-visual-bar">
-              {#each post.reactions as reactionGroup}
+              {#each post.reaction_groups as reactionGroup}
                 {#if reactionGroup.count > 0}
                   <div class="reaction-group">
                     {#each Array(Math.min(reactionGroup.count, 10)) as _, i}
@@ -468,13 +551,13 @@
                 <button 
                   class="reaction-btn"
                   class:active={post.user_reactions?.includes(reaction.type)}
-                  on:click={() => addReaction(post.id, reaction.type)}
+                  on:click={() => toggleReaction(post.id, reaction.type)}
                   title={reaction.type}
                 >
                   {reaction.emoji}
-                  {#if post.reactions?.find(r => r.reaction === reaction.type)?.count > 0}
+                  {#if post.reaction_groups?.find(r => r.reaction === reaction.type)?.count > 0}
                     <span class="reaction-mini-count">
-                      {post.reactions.find(r => r.reaction === reaction.type).count}
+                      {post.reaction_groups.find(r => r.reaction === reaction.type).count}
                     </span>
                   {/if}
                 </button>
