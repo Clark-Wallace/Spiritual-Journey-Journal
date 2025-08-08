@@ -644,13 +644,36 @@
             p_user_id: user.id
           });
         
-        if (!error) {
-          incomingRequests.delete(userId);
-          incomingRequests = new Set(incomingRequests);
-          fellowships.add(userId);
-          fellowships = new Set(fellowships);
-          requestCount = Math.max(0, requestCount - 1);
+        if (error) {
+          console.error('Error accepting request:', error);
+          // Fallback: manually accept
+          const { error: updateError } = await supabase
+            .from('fellowship_requests')
+            .update({ 
+              status: 'accepted',
+              responded_at: new Date().toISOString()
+            })
+            .eq('id', request.request_id)
+            .eq('to_user_id', user.id);
+          
+          if (!updateError) {
+            // Create our side of fellowship
+            await supabase
+              .from('fellowships')
+              .insert({ user_id: user.id, fellow_id: userId });
+          }
         }
+        
+        // Update UI state
+        incomingRequests.delete(userId);
+        incomingRequests = new Set(incomingRequests);
+        fellowships.add(userId);
+        fellowships = new Set(fellowships);
+        requestCount = Math.max(0, requestCount - 1);
+        
+        // Reload to ensure consistency
+        await loadFellowships();
+        await loadFellowshipRequests();
       }
     } else {
       // Send new request

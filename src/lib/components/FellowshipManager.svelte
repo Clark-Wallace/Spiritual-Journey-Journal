@@ -103,15 +103,18 @@
         .eq('to_user_id', user.id);
       
       if (!updateError) {
-        // Create mutual fellowship
-        await supabase
+        // Create our side of the fellowship (we can only insert where we are user_id)
+        const { error: fellowshipError } = await supabase
           .from('fellowships')
-          .insert([
-            { user_id: user.id, fellow_id: fromUserId },
-            { user_id: fromUserId, fellow_id: user.id }
-          ]);
+          .insert({ user_id: user.id, fellow_id: fromUserId });
         
-        console.log('Accepted via fallback');
+        if (!fellowshipError) {
+          console.log('Accepted via fallback - created our side of fellowship');
+          // Note: The other user will need to create their side when they load
+          // Or we need a database trigger to handle mutual fellowship creation
+        } else {
+          console.error('Error creating fellowship:', fellowshipError);
+        }
       }
     }
     
