@@ -5,7 +5,6 @@
   import { currentView } from '../stores';
   import VoiceRecorder from './VoiceRecorder.svelte';
   import FellowshipManager from './FellowshipManager.svelte';
-  import ContextMenu from './ContextMenu.svelte';
   
   let messages: any[] = [];
   let onlineUsers: any[] = [];
@@ -18,10 +17,6 @@
   let isMobile = false;
   let showFellowshipManager = false;
   let fellowships: Set<string> = new Set();
-  let showContextMenu = false;
-  let contextMenuX = 0;
-  let contextMenuY = 0;
-  let selectedUser: any = null;
   
   // Chat rooms
   interface ChatRoom {
@@ -515,19 +510,6 @@
     alert(event.detail.message);
   }
   
-  function handleMessageRightClick(event: MouseEvent, message: any) {
-    // Don't show context menu for own messages
-    if (message.user_id === $authStore?.id) return;
-    
-    selectedUser = {
-      id: message.user_id,
-      name: message.user_name || 'Anonymous'
-    };
-    contextMenuX = event.clientX;
-    contextMenuY = event.clientY;
-    showContextMenu = true;
-  }
-  
   async function toggleFellowship(userId: string, userName: string) {
     const user = await getCurrentUser();
     if (!user) return;
@@ -569,20 +551,6 @@
       }
     }
   }
-  
-  $: contextMenuItems = selectedUser ? [
-    {
-      label: fellowships.has(selectedUser.id) ? 'Remove from Fellowship' : 'Add to Fellowship',
-      icon: fellowships.has(selectedUser.id) ? '👥' : '➕',
-      action: () => toggleFellowship(selectedUser.id, selectedUser.name)
-    },
-    { divider: true },
-    {
-      label: 'Copy Name',
-      icon: '📋',
-      action: () => navigator.clipboard.writeText(selectedUser.name)
-    }
-  ] : [];
 </script>
 
 <div class="sanctuary-container">
@@ -697,12 +665,7 @@
       {:else}
         {#each messages as message}
           <div class="divine-message">
-            <div 
-              class="messenger-seal" 
-              on:contextmenu|preventDefault={(e) => handleMessageRightClick(e, message)}
-              role="button"
-              tabindex="0"
-            >
+            <div class="messenger-seal">
               {getInitials(message.user_name || 'Anonymous')}
               {#if fellowships.has(message.user_id)}
                 <span class="fellowship-indicator" title="In your fellowship">👤</span>
@@ -714,6 +677,18 @@
                 <span class="message-timestamp">{formatTime(message.created_at)}</span>
                 {#if message.user_id === $authStore?.id}
                   <button class="delete-whisper" on:click={() => deleteMessage(message.id)}>×</button>
+                {:else}
+                  <button 
+                    class="fellowship-toggle-btn"
+                    on:click={() => toggleFellowship(message.user_id, message.user_name)}
+                    title={fellowships.has(message.user_id) ? 'Remove from fellowship' : 'Add to fellowship'}
+                  >
+                    {#if fellowships.has(message.user_id)}
+                      <span class="in-fellowship">👥</span>
+                    {:else}
+                      <span class="add-fellowship">+</span>
+                    {/if}
+                  </button>
                 {/if}
               </div>
               <div class="scroll-text" class:prayer-illumination={message.is_prayer_request}>
@@ -848,13 +823,6 @@
 </div>
 
 <FellowshipManager bind:show={showFellowshipManager} />
-
-<ContextMenu 
-  bind:show={showContextMenu}
-  x={contextMenuX}
-  y={contextMenuY}
-  items={contextMenuItems}
-/>
 
 <style>
   .sanctuary-container {
@@ -1354,7 +1322,6 @@
     font-size: 18px;
     box-shadow: 0 0 30px rgba(138, 43, 226, 0.2);
     position: relative;
-    cursor: context-menu;
   }
   
   .fellowship-indicator {
@@ -1414,6 +1381,38 @@
   .delete-whisper:hover {
     color: #f44336;
     opacity: 1;
+  }
+  
+  .fellowship-toggle-btn {
+    margin-left: auto;
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid var(--border-gold);
+    border-radius: 12px;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+    color: var(--text-divine);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 24px;
+  }
+  
+  .fellowship-toggle-btn:hover {
+    background: rgba(255, 215, 0, 0.2);
+    transform: scale(1.1);
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+  }
+  
+  .fellowship-toggle-btn .add-fellowship {
+    font-weight: bold;
+    font-size: 16px;
+  }
+  
+  .fellowship-toggle-btn .in-fellowship {
+    font-size: 14px;
   }
   
   .scroll-text {
