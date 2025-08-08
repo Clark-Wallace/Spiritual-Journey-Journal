@@ -6,10 +6,8 @@
   let posts: any[] = [];
   let loading = true;
   let filter: 'all' | 'prayer' | 'testimony' | 'praise' | 'gratitude' = 'all';
-  let newPost = '';
-  let postType: 'prayer' | 'testimony' | 'praise' | 'message' = 'message';
-  let isAnonymous = false;
   let subscription: any;
+  let displayMode: 'grid' | 'list' = 'grid'; // For space optimization
   
   const reactions = [
     { type: 'amen', emoji: '🙏', label: 'Amen' },
@@ -149,33 +147,7 @@
     loading = false;
   }
   
-  async function sharePost() {
-    if (!newPost.trim()) return;
-    
-    const user = await authStore.getUser();
-    if (!user) return;
-    
-    const { error } = await supabase
-      .from('community_posts')
-      .insert({
-        user_id: user.id,
-        user_name: isAnonymous ? 'Anonymous Soul' : ($userInfo?.name || user.email?.split('@')[0]),
-        is_anonymous: isAnonymous,
-        share_type: postType === 'message' ? 'post' : postType,
-        content: newPost,
-        mood: null,
-        gratitude: null,
-        prayer: postType === 'prayer' ? newPost : null
-      });
-    
-    if (error) {
-      console.error('Error sharing post:', error);
-    } else {
-      newPost = '';
-      postType = 'message';
-      isAnonymous = false;
-    }
-  }
+  // Remove sharePost function - entries come from journal only
   
   async function toggleReaction(postId: string, reactionType: string) {
     const user = await authStore.getUser();
@@ -285,7 +257,7 @@
   </div>
   
   <!-- Prayer Wall -->
-  <div class="prayer-wall">
+  <div class="prayer-wall" class:grid-view={displayMode === 'grid'} class:list-view={displayMode === 'list'}>
     {#if loading}
       <div class="sanctuary-welcome">
         <h2>Gathering prayers...</h2>
@@ -378,44 +350,13 @@
     {/if}
   </div>
   
-  <!-- Prayer Altar (Input) -->
-  <div class="prayer-altar">
-    <div class="prayer-type">
-      <span class="type-option" class:active={postType === 'message'} on:click={() => postType = 'message'}>
-        Message
-      </span>
-      <span class="type-option" class:active={postType === 'prayer'} on:click={() => postType = 'prayer'}>
-        Prayer Request
-      </span>
-      <span class="type-option" class:active={postType === 'praise'} on:click={() => postType = 'praise'}>
-        Praise Report
-      </span>
-      <span class="type-option" class:active={postType === 'testimony'} on:click={() => postType = 'testimony'}>
-        Testimony
-      </span>
-    </div>
-    
-    <div class="altar-container">
-      <div class="prayer-input-wrapper">
-        <textarea 
-          class="prayer-input" 
-          placeholder={postType === 'prayer' ? 'Share your prayer request...' :
-                      postType === 'praise' ? 'Share your praise report...' :
-                      postType === 'testimony' ? 'Share your testimony...' :
-                      'Share your heart, lift up a prayer, or encourage a soul...'}
-          rows="2"
-          bind:value={newPost}
-        ></textarea>
-      </div>
-      <div class="prayer-actions">
-        <label class="anonymous-toggle" title="Share anonymously">
-          <input type="checkbox" bind:checked={isAnonymous} />
-          <span>🕊️</span>
-        </label>
-        <button class="altar-button send-prayer" on:click={sharePost}>
-          Lift Up
-        </button>
-      </div>
+  <!-- Info Bar - Journal entries only -->
+  <div class="info-bar">
+    <div class="info-content">
+      <span>💝 Share your heart from the Journal tab</span>
+      <button class="display-toggle" on:click={() => displayMode = displayMode === 'grid' ? 'list' : 'grid'}>
+        {displayMode === 'grid' ? '📋 List View' : '🏛️ Grid View'}
+      </button>
     </div>
   </div>
 </div>
@@ -425,7 +366,7 @@
     height: calc(100vh - 120px); /* Account for header and nav */
     display: flex;
     flex-direction: column;
-    background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1e 50%, #16213e 100%);
+    background: var(--bg-dark); /* Use consistent dark background */
     position: relative;
     overflow: hidden;
   }
@@ -448,12 +389,12 @@
     50% { transform: rotate(180deg) scale(1.1); opacity: 0.8; }
   }
   
-  /* Candle lights floating */
+  /* Candle lights floating - more subtle */
   .candle-light {
     position: absolute;
-    width: 60px;
-    height: 60px;
-    background: radial-gradient(circle, rgba(255, 183, 77, 0.6), transparent);
+    width: 40px;
+    height: 40px;
+    background: radial-gradient(circle, rgba(255, 183, 77, 0.2), transparent);
     border-radius: 50%;
     animation: flicker 3s ease-in-out infinite;
     pointer-events: none;
@@ -563,30 +504,44 @@
   .prayer-wall {
     flex: 1;
     overflow-y: auto;
-    padding: 30px;
+    padding: 1rem;
     position: relative;
     z-index: 5;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    max-width: 1000px;
+    max-width: 1200px;
     width: 100%;
     margin: 0 auto;
   }
   
+  .prayer-wall.grid-view {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    align-content: start;
+  }
+  
+  .prayer-wall.list-view {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .list-view .prayer-note {
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  
   /* Prayer notes/messages */
   .prayer-note {
-    background: linear-gradient(135deg, rgba(255, 248, 225, 0.95), rgba(255, 243, 205, 0.95));
-    color: #2c3e50;
-    padding: 20px;
+    background: rgba(255, 255, 255, 0.03); /* Dark mode friendly */
+    border: 1px solid var(--border-gold);
+    color: var(--text-light);
+    padding: 15px;
     border-radius: 8px;
-    box-shadow: 
-      0 5px 15px rgba(0, 0, 0, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     position: relative;
-    transform: rotate(-1deg);
     transition: all 0.3s ease;
-    max-width: 600px;
+    width: 100%;
     animation: fadeInUp 0.5s ease-out both;
   }
   
@@ -601,26 +556,15 @@
     }
   }
   
-  .prayer-note:nth-child(even) {
-    align-self: flex-end;
-    transform: rotate(1deg);
-    background: linear-gradient(135deg, rgba(255, 235, 205, 0.95), rgba(255, 228, 181, 0.95));
-  }
+  /* Remove alternating styles for better space usage */
   
   .prayer-note:hover {
-    transform: rotate(0deg) scale(1.02);
-    box-shadow: 
-      0 8px 25px rgba(0, 0, 0, 0.4),
-      0 0 40px rgba(255, 215, 0, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(255, 215, 0, 0.2);
+    border-color: var(--border-gold-strong);
   }
   
-  .prayer-note::before {
-    content: '📌';
-    position: absolute;
-    top: -10px;
-    left: 20px;
-    font-size: 20px;
-  }
+  /* Remove pin emoji for cleaner look */
   
   .note-header {
     display: flex;
@@ -633,7 +577,7 @@
   
   .note-author {
     font-weight: 600;
-    color: #8b4513;
+    color: var(--text-divine);
     font-size: 14px;
     display: flex;
     align-items: center;
@@ -646,35 +590,47 @@
   
   .note-time {
     font-size: 12px;
-    color: #a0522d;
+    color: var(--text-scripture);
     opacity: 0.8;
   }
   
   .note-content {
-    font-size: 16px;
-    line-height: 1.6;
-    color: #3e2723;
-    font-family: 'Georgia', serif;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-light);
+    font-family: inherit;
   }
   
   .main-content {
-    margin-bottom: 12px;
+    margin-bottom: 8px;
+    /* Truncate long text in grid view */
+    display: -webkit-box;
+    -webkit-line-clamp: 6;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .list-view .main-content {
+    -webkit-line-clamp: unset;
+    overflow: visible;
   }
   
   .prayer-text {
-    background: rgba(138, 43, 226, 0.05);
-    padding: 10px;
+    background: rgba(138, 43, 226, 0.03);
+    padding: 8px;
     border-radius: 5px;
-    margin: 10px 0;
-    border-left: 3px solid rgba(138, 43, 226, 0.3);
+    margin: 8px 0;
+    border-left: 2px solid rgba(138, 43, 226, 0.3);
+    font-size: 0.9rem;
   }
   
   .gratitude-list {
-    background: rgba(255, 215, 0, 0.08);
-    padding: 10px;
+    background: rgba(255, 215, 0, 0.03);
+    padding: 8px;
     border-radius: 5px;
-    margin: 10px 0;
-    border-left: 3px solid #ffd700;
+    margin: 8px 0;
+    border-left: 2px solid var(--border-gold);
+    font-size: 0.9rem;
   }
   
   .gratitude-item {
@@ -685,59 +641,60 @@
   
   /* Special prayer request style */
   .prayer-request-note {
-    background: linear-gradient(135deg, rgba(255, 193, 7, 0.15), rgba(255, 152, 0, 0.15));
-    border: 2px solid rgba(255, 152, 0, 0.3);
-    padding-left: 50px;
+    background: rgba(138, 43, 226, 0.05);
+    border-color: rgba(138, 43, 226, 0.3);
   }
   
   .prayer-request-note::after {
     content: '🙏';
     position: absolute;
-    left: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 24px;
-    animation: float 3s ease-in-out infinite;
+    right: 10px;
+    top: 10px;
+    font-size: 18px;
+    opacity: 0.5;
   }
   
-  @keyframes float {
-    0%, 100% { transform: translateY(-50%); }
-    50% { transform: translateY(-60%); }
+  /* Removed unused float animation */
   }
   
   /* Praise report style */
   .praise-note {
-    background: linear-gradient(135deg, rgba(139, 195, 74, 0.15), rgba(76, 175, 80, 0.15));
-    border: 2px solid rgba(76, 175, 80, 0.3);
+    background: rgba(76, 175, 80, 0.05);
+    border-color: rgba(76, 175, 80, 0.3);
   }
   
   .praise-note::before {
     content: '✨';
-    animation: sparkle 2s ease-in-out infinite;
+    right: 10px;
+    top: 10px;
+    left: auto;
   }
   
   .testimony-note {
-    background: linear-gradient(135deg, rgba(156, 39, 176, 0.1), rgba(103, 58, 183, 0.1));
-    border: 2px solid rgba(156, 39, 176, 0.3);
+    background: rgba(156, 39, 176, 0.05);
+    border-color: rgba(156, 39, 176, 0.3);
   }
   
   .testimony-note::before {
     content: '💫';
+    right: 10px;
+    top: 10px;
+    left: auto;
   }
   
   .gratitude-note {
-    background: linear-gradient(135deg, rgba(255, 235, 59, 0.15), rgba(255, 193, 7, 0.15));
-    border: 2px solid rgba(255, 193, 7, 0.3);
+    background: rgba(255, 215, 0, 0.05);
+    border-color: rgba(255, 215, 0, 0.3);
   }
   
   .gratitude-note::before {
     content: '🌟';
+    right: 10px;
+    top: 10px;
+    left: auto;
   }
   
-  @keyframes sparkle {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.7; transform: scale(1.2); }
-  }
+  /* Removed unused sparkle animation */
   
   /* Prayer warriors (reactions) */
   .prayer-warriors {
@@ -754,12 +711,12 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    padding: 4px 10px;
-    background: rgba(255, 255, 255, 0.5);
-    border: 1px solid transparent;
-    border-radius: 15px;
-    font-size: 13px;
-    color: #5d4037;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 12px;
+    font-size: 12px;
+    color: var(--text-holy);
     cursor: pointer;
     transition: all 0.3s;
     font-family: inherit;
@@ -771,21 +728,22 @@
   }
   
   .warrior-count.active {
-    background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 193, 7, 0.3));
-    border-color: rgba(255, 215, 0, 0.5);
-    color: #8b4513;
+    background: rgba(255, 215, 0, 0.15);
+    border-color: var(--border-gold);
+    color: var(--text-divine);
     font-weight: 600;
   }
   
   /* Welcome sanctuary message */
   .sanctuary-welcome {
-    background: radial-gradient(ellipse at center, rgba(255, 215, 0, 0.1), transparent);
-    border: 1px solid rgba(255, 215, 0, 0.3);
-    border-radius: 15px;
-    padding: 30px;
+    background: rgba(255, 215, 0, 0.05);
+    border: 1px solid var(--border-gold);
+    border-radius: 10px;
+    padding: 1.5rem;
     text-align: center;
-    color: #ffd700;
-    margin-bottom: 20px;
+    color: var(--text-divine);
+    margin-bottom: 1rem;
+    grid-column: 1 / -1; /* Span full width in grid */
   }
   
   .sanctuary-welcome h2 {
@@ -800,135 +758,42 @@
     line-height: 1.6;
   }
   
-  /* Input area - Prayer altar */
-  .prayer-altar {
-    background: linear-gradient(180deg, rgba(26, 26, 46, 0.95), rgba(15, 15, 30, 0.95));
-    backdrop-filter: blur(10px);
-    border-top: 1px solid rgba(255, 223, 186, 0.2);
-    padding: 20px;
+  /* Info Bar */
+  .info-bar {
+    background: rgba(255, 255, 255, 0.02);
+    border-top: 1px solid var(--border-gold);
+    padding: 1rem;
     position: relative;
     z-index: 10;
   }
   
-  .altar-container {
-    max-width: 800px;
+  .info-content {
+    max-width: 1200px;
     margin: 0 auto;
     display: flex;
-    gap: 15px;
-    align-items: flex-end;
-  }
-  
-  .prayer-input-wrapper {
-    flex: 1;
-    background: rgba(255, 248, 225, 0.1);
-    border: 1px solid rgba(255, 223, 186, 0.3);
-    border-radius: 12px;
-    padding: 12px 15px;
-    transition: all 0.3s;
-  }
-  
-  .prayer-input-wrapper:focus-within {
-    background: rgba(255, 248, 225, 0.15);
-    box-shadow: 0 0 30px rgba(255, 215, 0, 0.2);
-  }
-  
-  .prayer-input {
-    width: 100%;
-    background: none;
-    border: none;
-    color: #ffd700;
-    font-size: 15px;
-    font-family: 'Georgia', serif;
-    outline: none;
-    resize: none;
-  }
-  
-  .prayer-input::placeholder {
-    color: rgba(255, 223, 186, 0.5);
-  }
-  
-  .prayer-actions {
-    display: flex;
-    gap: 10px;
+    justify-content: space-between;
     align-items: center;
+    color: var(--text-scripture);
+    font-size: 0.9rem;
   }
   
-  .anonymous-toggle {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    padding: 10px;
+  .display-toggle {
+    padding: 0.5rem 1rem;
     background: rgba(255, 215, 0, 0.1);
-    border: 1px solid rgba(255, 215, 0, 0.3);
-    border-radius: 8px;
-    transition: all 0.3s;
-  }
-  
-  .anonymous-toggle:hover {
-    background: rgba(255, 215, 0, 0.2);
-  }
-  
-  .anonymous-toggle input {
-    display: none;
-  }
-  
-  .anonymous-toggle input:checked + span {
-    filter: brightness(1.5);
-  }
-  
-  .altar-button {
-    padding: 10px 20px;
-    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 193, 7, 0.2));
-    border: 1px solid rgba(255, 215, 0, 0.4);
-    color: #ffd700;
-    border-radius: 8px;
+    border: 1px solid var(--border-gold);
+    color: var(--text-divine);
+    border-radius: 20px;
     cursor: pointer;
     transition: all 0.3s;
-    font-family: 'Georgia', serif;
+    font-size: 0.85rem;
   }
   
-  .altar-button:hover {
-    background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 193, 7, 0.3));
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+  .display-toggle:hover {
+    background: rgba(255, 215, 0, 0.2);
     transform: translateY(-2px);
   }
   
-  .send-prayer {
-    background: linear-gradient(135deg, #ffd700, #ffb300);
-    color: #1a1a2e;
-    font-weight: 600;
-  }
-  
-  .send-prayer:hover {
-    background: linear-gradient(135deg, #ffed4e, #ffc947);
-  }
-  
-  /* Prayer type indicator */
-  .prayer-type {
-    position: absolute;
-    top: -30px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 10px;
-    padding: 5px 10px;
-    background: rgba(26, 26, 46, 0.8);
-    border-radius: 20px;
-  }
-  
-  .type-option {
-    padding: 5px 10px;
-    border-radius: 15px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.3s;
-    color: rgba(255, 223, 186, 0.6);
-  }
-  
-  .type-option.active {
-    background: rgba(255, 215, 0, 0.2);
-    color: #ffd700;
-  }
+  /* Removed unused input styles */
   
   /* Mobile responsiveness */
   @media (max-width: 768px) {
@@ -943,29 +808,34 @@
     }
     
     .prayer-wall {
-      padding: 15px;
+      padding: 0.75rem;
     }
     
-    .prayer-note {
-      max-width: 100%;
-      align-self: stretch !important;
+    .prayer-wall.grid-view {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
     }
     
-    .prayer-type {
-      position: static;
-      transform: none;
-      margin-bottom: 10px;
-      justify-content: center;
-    }
-    
-    .altar-container {
+    .info-content {
       flex-direction: column;
-      gap: 10px;
+      gap: 0.75rem;
+      text-align: center;
     }
     
-    .prayer-actions {
+    .display-toggle {
       width: 100%;
-      justify-content: space-between;
+    }
+  }
+  
+  @media (min-width: 768px) and (max-width: 1024px) {
+    .prayer-wall.grid-view {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .prayer-wall.grid-view {
+      grid-template-columns: repeat(3, 1fr);
     }
   }
 </style>
