@@ -49,16 +49,39 @@
       isMobile = window.innerWidth <= 768;
     });
     
+    // Clean up presence when user leaves the page
+    const handleBeforeUnload = () => {
+      removePresence();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    // Also clean up on visibility change (tab switch)
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        removePresence();
+      } else {
+        updatePresence();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
     await loadFellowships();
     await loadMessages();
     await updatePresence();
     setupRealtimeSubscriptions();
     
+    // Update presence more frequently (every 30 seconds)
     const presenceInterval = setInterval(updatePresence, 30000);
+    
+    // Clean up stale users periodically (every minute)
+    const cleanupInterval = setInterval(loadOnlineUsers, 60000);
     
     return () => {
       clearInterval(presenceInterval);
+      clearInterval(cleanupInterval);
       cleanupSubscriptions();
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   });
   
@@ -509,6 +532,9 @@
   async function exitChat() {
     // Clean up presence
     await removePresence();
+    
+    // Clear online users list immediately
+    onlineUsers = [];
     
     // Clean up subscriptions
     cleanupSubscriptions();
