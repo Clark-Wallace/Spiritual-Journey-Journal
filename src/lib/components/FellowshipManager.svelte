@@ -222,17 +222,8 @@
     const user = await authStore.getUser();
     if (!user) return;
     
-    // Save the fellow's name directly to user_profiles table
-    if (fellowName && fellowName !== 'Unknown') {
-      await supabase
-        .from('user_profiles')
-        .upsert({
-          user_id: fellowId,
-          display_name: fellowName
-        }, {
-          onConflict: 'user_id'
-        });
-    }
+    // Note: We can't save other users' profiles due to RLS policies
+    // Their profile should already exist from when they signed up
     
     // Send fellowship request
     const { data, error } = await supabase

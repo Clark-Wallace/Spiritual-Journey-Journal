@@ -595,17 +595,9 @@
     const user = await getCurrentUser();
     if (!user) return;
     
-    // Save the user's name directly to user_profiles table (skip RPC function)
-    if (userName && userName !== 'Unknown') {
-      await supabase
-        .from('user_profiles')
-        .upsert({
-          user_id: userId,
-          display_name: userName
-        }, {
-          onConflict: 'user_id'
-        });
-    }
+    // Note: We can't save other users' profiles due to RLS policies
+    // Their profile should already exist from when they signed up
+    // We'll just use the userName passed in for display
     
     if (fellowships.has(userId)) {
       // Already in fellowship - remove
