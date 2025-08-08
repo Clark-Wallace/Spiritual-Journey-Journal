@@ -289,13 +289,21 @@
       return;
     }
     
+    const userName = $userInfo?.name || user.user_metadata?.name || user.email?.split('@')[0];
+    
+    // Update user profile with current name
+    await supabase.rpc('upsert_user_profile', {
+      p_user_id: user.id,
+      p_display_name: userName
+    });
+    
     const isPrayerRequest = newMessage.toLowerCase().includes('pray') || 
                            newMessage.toLowerCase().includes('need prayer');
     
     const messageData = {
       room: currentRoom.id,
       user_id: user.id,
-      user_name: $userInfo?.name || user.user_metadata?.name || user.email?.split('@')[0],
+      user_name: userName,
       message: newMessage.trim(),
       is_prayer_request: isPrayerRequest
     };
@@ -577,6 +585,14 @@
       }
     } else {
       // Add to fellowship
+      // First save the fellow's name to user_profiles
+      if (userName && userName !== 'Unknown') {
+        await supabase.rpc('upsert_user_profile', {
+          p_user_id: userId,
+          p_display_name: userName
+        });
+      }
+      
       const { error } = await supabase
         .from('fellowships')
         .insert({
