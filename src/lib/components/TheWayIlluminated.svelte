@@ -1162,6 +1162,51 @@
     box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
   }
   
+  .fellowship-btn.has-requests {
+    animation: pulse 2s infinite;
+    background: linear-gradient(135deg, #ff6b6b, #ff8787);
+    border-color: #ff6b6b;
+  }
+  
+  @keyframes pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(255, 107, 107, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(255, 107, 107, 0);
+    }
+  }
+  
+  .request-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ff4444;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+    border: 2px solid var(--bg-dark);
+    animation: bounce 1s infinite;
+  }
+  
+  @keyframes bounce {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.1);
+    }
+  }
+  
   .exit-sanctuary {
     position: absolute;
     top: 10px;
