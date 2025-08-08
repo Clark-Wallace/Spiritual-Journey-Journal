@@ -180,11 +180,28 @@
     const user = await getCurrentUser();
     if (!user) return;
     
+    console.log('Loading fellowships for user:', user.id);
+    
     const { data, error } = await supabase
       .rpc('get_fellowship_members', { for_user_id: user.id });
     
-    if (!error && data) {
+    if (error) {
+      console.error('Error loading fellowships:', error);
+      // Fallback: try direct table query if function doesn't exist
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('fellowships')
+        .select('fellow_id')
+        .eq('user_id', user.id);
+      
+      if (!fallbackError && fallbackData) {
+        fellowships = new Set(fallbackData.map((f: any) => f.fellow_id));
+        console.log('Loaded fellowships (fallback):', fellowships);
+      } else if (fallbackError) {
+        console.error('Fallback also failed:', fallbackError);
+      }
+    } else if (data) {
       fellowships = new Set(data.map((f: any) => f.fellow_id));
+      console.log('Loaded fellowships:', fellowships);
     }
   }
   
