@@ -516,10 +516,12 @@
   }
   
   function handleMessageRightClick(event: MouseEvent, message: any) {
-    event.preventDefault();
+    // Don't show context menu for own messages
+    if (message.user_id === $authStore?.id) return;
+    
     selectedUser = {
       id: message.user_id,
-      name: message.user_name
+      name: message.user_name || 'Anonymous'
     };
     contextMenuX = event.clientX;
     contextMenuY = event.clientY;
@@ -529,6 +531,8 @@
   async function toggleFellowship(userId: string, userName: string) {
     const user = await getCurrentUser();
     if (!user) return;
+    
+    console.log('Toggling fellowship for:', userId, userName);
     
     if (fellowships.has(userId)) {
       // Remove from fellowship
@@ -541,6 +545,10 @@
       if (!error) {
         fellowships.delete(userId);
         fellowships = new Set(fellowships);
+        console.log('Removed from fellowship');
+      } else {
+        console.error('Error removing from fellowship:', error);
+        alert('Failed to remove from fellowship');
       }
     } else {
       // Add to fellowship
@@ -554,6 +562,10 @@
       if (!error) {
         fellowships.add(userId);
         fellowships = new Set(fellowships);
+        console.log('Added to fellowship');
+      } else {
+        console.error('Error adding to fellowship:', error);
+        alert('Failed to add to fellowship');
       }
     }
   }
@@ -685,7 +697,12 @@
       {:else}
         {#each messages as message}
           <div class="divine-message">
-            <div class="messenger-seal" on:contextmenu={(e) => handleMessageRightClick(e, message)}>
+            <div 
+              class="messenger-seal" 
+              on:contextmenu|preventDefault={(e) => handleMessageRightClick(e, message)}
+              role="button"
+              tabindex="0"
+            >
               {getInitials(message.user_name || 'Anonymous')}
               {#if fellowships.has(message.user_id)}
                 <span class="fellowship-indicator" title="In your fellowship">👤</span>
@@ -829,6 +846,15 @@
     </div>
   </div>
 </div>
+
+<FellowshipManager bind:show={showFellowshipManager} />
+
+<ContextMenu 
+  bind:show={showContextMenu}
+  x={contextMenuX}
+  y={contextMenuY}
+  items={contextMenuItems}
+/>
 
 <style>
   .sanctuary-container {
