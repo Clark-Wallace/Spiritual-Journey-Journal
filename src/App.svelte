@@ -139,7 +139,9 @@
             📱 Feed View
           </button>
         </div>
-        <CommunityFeed />
+        {#if communityView === 'feed'}
+          <CommunityFeed />
+        {/if}
       {/if}
     </div>
   {/if}
