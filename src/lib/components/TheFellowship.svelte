@@ -19,6 +19,7 @@
     await loadFellowships();
     await loadFellowshipFeed();
     await loadFellowshipMembers();
+    await loadRequests();
   });
   
   async function loadFellowships() {
@@ -39,38 +40,89 @@
     const user = await getCurrentUser();
     if (!user) return;
     
+    // Use the RPC function to get fellowship members with names
     const { data, error } = await supabase
-      .from('fellowships')
-      .select('fellow_id, created_at')
-      .eq('user_id', user.id);
+      .rpc('get_fellowship_members', { for_user_id: user.id });
     
-    if (!error && data) {
-      // Get member details from recent activity
-      const memberIds = data.map(f => f.fellow_id);
+    if (error) {
+      console.error('Error loading fellowship members:', error);
+      // Fallback to direct query
+      const { data: fallbackData } = await supabase
+        .from('fellowships')
+        .select('fellow_id, created_at')
+        .eq('user_id', user.id);
       
-      if (memberIds.length > 0) {
-        const { data: memberData } = await supabase
-          .from('community_posts')
-          .select('user_id, user_name')
-          .in('user_id', memberIds)
-          .limit(100);
+      if (fallbackData && fallbackData.length > 0) {
+        const memberIds = fallbackData.map(f => f.fellow_id);
         
-        const memberMap = new Map();
-        memberData?.forEach(post => {
-          if (!memberMap.has(post.user_id)) {
-            memberMap.set(post.user_id, {
-              id: post.user_id,
-              name: post.user_name,
-              joined: data.find(f => f.fellow_id === post.user_id)?.created_at
-            });
-          }
-        });
+        // Try to get names from user_profiles
+        const { data: profiles } = await supabase
+          .from('user_profiles')
+          .select('user_id, display_name')
+          .in('user_id', memberIds);
         
-        fellowshipMembers = Array.from(memberMap.values());
+        const profileMap = new Map(profiles?.map(p => [p.user_id, p.display_name]) || []);
+        
+        fellowshipMembers = fallbackData.map(f => ({
+          id: f.fellow_id,
+          name: profileMap.get(f.fellow_id) || 'Unknown',
+          joined: f.created_at
+        }));
       }
+    } else {
+      fellowshipMembers = (data || []).map(member => ({
+        id: member.fellow_id,
+        name: member.fellow_name,
+        joined: member.created_at
+      }));
     }
     
     loading = false;
+  }
+  
+  async function loadRequests() {
+    const user = await getCurrentUser();
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .rpc('get_fellowship_requests', { p_user_id: user.id });
+    
+    if (!error && data) {
+      fellowshipRequests = data.filter((req: any) => req.direction === 'received');
+    }
+  }
+  
+  async function acceptRequest(requestId: string) {
+    const user = await getCurrentUser();
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .rpc('accept_fellowship_request', {
+        p_request_id: requestId,
+        p_user_id: user.id
+      });
+    
+    if (!error) {
+      await loadRequests();
+      await loadFellowships();
+      await loadFellowshipMembers();
+      await loadFellowshipFeed();
+    }
+  }
+  
+  async function declineRequest(requestId: string) {
+    const user = await getCurrentUser();
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .rpc('decline_fellowship_request', {
+        p_request_id: requestId,
+        p_user_id: user.id
+      });
+    
+    if (!error) {
+      await loadRequests();
+    }
   }
   
   async function loadFellowshipFeed() {
@@ -81,32 +133,67 @@
       await loadFellowships();
     }
     
-    const fellowIds = Array.from(fellowships);
-    fellowIds.push(user.id); // Include own posts
+    // Try using the RPC function first
+    const { data: feedData, error: feedError } = await supabase
+      .rpc('get_fellowship_feed', { for_user_id: user.id });
     
-    if (fellowIds.length > 0) {
-      const { data, error } = await supabase
-        .from('community_posts')
-        .select(`
-          *,
-          reactions (
-            id,
-            reaction,
-            user_id
-          ),
-          encouragements (
-            id,
-            message,
-            user_name,
-            created_at
-          )
-        `)
-        .in('user_id', fellowIds)
-        .order('created_at', { ascending: false })
-        .limit(50);
+    if (feedError) {
+      // Fallback to direct query
+      const fellowIds = Array.from(fellowships);
+      fellowIds.push(user.id); // Include own posts
       
-      if (!error) {
-        fellowshipPosts = data || [];
+      if (fellowIds.length > 0) {
+        const { data, error } = await supabase
+          .from('community_posts')
+          .select(`
+            *,
+            reactions (
+              id,
+              reaction,
+              user_id
+            ),
+            encouragements (
+              id,
+              message,
+              user_name,
+              created_at
+            )
+          `)
+          .in('user_id', fellowIds)
+          .order('created_at', { ascending: false })
+          .limit(50);
+        
+        if (!error) {
+          fellowshipPosts = data || [];
+        }
+      }
+    } else {
+      // Load reactions and encouragements for the posts
+      const postIds = feedData.map(p => p.post_id);
+      
+      if (postIds.length > 0) {
+        const { data: reactionsData } = await supabase
+          .from('reactions')
+          .select('*')
+          .in('post_id', postIds);
+        
+        const { data: encouragementsData } = await supabase
+          .from('encouragements')
+          .select('*')
+          .in('post_id', postIds);
+        
+        // Combine the data
+        fellowshipPosts = feedData.map(post => ({
+          id: post.post_id,
+          user_id: post.user_id,
+          user_name: post.user_name,
+          content: post.content,
+          share_type: post.share_type,
+          is_anonymous: post.is_anonymous,
+          created_at: post.created_at,
+          reactions: reactionsData?.filter(r => r.post_id === post.post_id) || [],
+          encouragements: encouragementsData?.filter(e => e.post_id === post.post_id) || []
+        }));
       }
     }
   }
@@ -344,22 +431,32 @@
     {:else if currentView === 'requests'}
       <!-- Fellowship Requests -->
       <div class="requests-section">
-        <h3>Fellowship Requests</h3>
+        <h3>Incoming Fellowship Requests</h3>
         {#if fellowshipRequests.length === 0}
           <div class="empty-state">
             <p>No pending fellowship requests.</p>
-            <p>Fellowship connections are mutual - both people need to add each other.</p>
+            <p>When someone sends you a fellowship request, it will appear here.</p>
           </div>
         {:else}
           {#each fellowshipRequests as request}
             <div class="request-card">
               <div class="request-info">
-                <span class="requester-name">{request.name}</span>
-                <span class="request-time">{formatDate(request.created_at)}</span>
+                <span class="requester-name">{request.from_user_name}</span>
+                <span class="request-time">Requested {formatDate(request.created_at)}</span>
               </div>
               <div class="request-actions">
-                <button class="accept-btn">✓ Accept</button>
-                <button class="decline-btn">✕ Decline</button>
+                <button 
+                  class="accept-btn"
+                  on:click={() => acceptRequest(request.request_id)}
+                >
+                  ✓ Accept
+                </button>
+                <button 
+                  class="decline-btn"
+                  on:click={() => declineRequest(request.request_id)}
+                >
+                  ✕ Decline
+                </button>
               </div>
             </div>
           {/each}

@@ -6,19 +6,27 @@
   export let show = false;
   
   let fellowships: any[] = [];
+  let incomingRequests: any[] = [];
   let loading = false;
   let searchTerm = '';
   let searchResults: any[] = [];
   let searching = false;
+  let activeTab: 'requests' | 'fellowship' = 'requests';
   
   onMount(() => {
     if (show) {
       loadFellowships();
+      loadRequests();
     }
   });
   
   $: if (show) {
     loadFellowships();
+    loadRequests();
+    // Default to requests tab if there are any
+    if (incomingRequests.length > 0) {
+      activeTab = 'requests';
+    }
   }
   
   async function loadFellowships() {
@@ -58,6 +66,49 @@
     loading = false;
   }
   
+  async function loadRequests() {
+    const user = await authStore.getUser();
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .rpc('get_fellowship_requests', { p_user_id: user.id });
+    
+    if (!error && data) {
+      incomingRequests = data.filter((req: any) => req.direction === 'received');
+    }
+  }
+  
+  async function acceptRequest(requestId: string, fromUserId: string) {
+    const user = await authStore.getUser();
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .rpc('accept_fellowship_request', {
+        p_request_id: requestId,
+        p_user_id: user.id
+      });
+    
+    if (!error) {
+      await loadRequests();
+      await loadFellowships();
+    }
+  }
+  
+  async function declineRequest(requestId: string) {
+    const user = await authStore.getUser();
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .rpc('decline_fellowship_request', {
+        p_request_id: requestId,
+        p_user_id: user.id
+      });
+    
+    if (!error) {
+      await loadRequests();
+    }
+  }
+  
   async function searchUsers() {
     if (!searchTerm.trim()) {
       searchResults = [];
@@ -67,29 +118,64 @@
     searching = true;
     const user = await authStore.getUser();
     
-    // Search in community posts for active users
-    const { data, error } = await supabase
-      .from('community_posts')
-      .select('user_id, user_name')
-      .ilike('user_name', `%${searchTerm}%`)
-      .neq('user_id', user?.id)
-      .limit(10);
+    // First try the RPC function
+    const { data: rpcData, error: rpcError } = await supabase
+      .rpc('get_all_users_with_profiles');
     
-    if (error) {
-      console.error('Error searching users:', error);
+    if (!rpcError && rpcData) {
+      // Filter results based on search term and existing fellowships
+      searchResults = (rpcData || [])
+        .filter(u => u.user_id !== user?.id)
+        .filter(u => !fellowships.find(f => f.fellow_id === u.user_id))
+        .filter(u => u.display_name.toLowerCase().includes(searchTerm.toLowerCase()))
+        .slice(0, 10)
+        .map(u => ({
+          user_id: u.user_id,
+          user_name: u.display_name
+        }));
     } else {
-      // Remove duplicates and filter out existing fellows
-      const uniqueUsers = new Map();
-      data?.forEach(post => {
-        if (!fellowships.find(f => f.fellow_id === post.user_id)) {
-          uniqueUsers.set(post.user_id, post.user_name);
-        }
-      });
+      // Fallback to searching in user_profiles table directly
+      let { data: profileData } = await supabase
+        .from('user_profiles')
+        .select('user_id, display_name')
+        .neq('user_id', user?.id)
+        .limit(20);
       
-      searchResults = Array.from(uniqueUsers, ([user_id, user_name]) => ({
-        user_id,
-        user_name
-      }));
+      if (profileData) {
+        // Filter locally
+        searchResults = profileData
+          .filter(profile => !fellowships.find(f => f.fellow_id === profile.user_id))
+          .filter(profile => profile.display_name.toLowerCase().includes(searchTerm.toLowerCase()))
+          .slice(0, 10)
+          .map(profile => ({
+            user_id: profile.user_id,
+            user_name: profile.display_name
+          }));
+      } else {
+        // Last resort: search in community posts
+        const { data: postsData } = await supabase
+          .from('community_posts')
+          .select('user_id, user_name')
+          .neq('user_id', user?.id)
+          .limit(50);
+        
+        if (postsData) {
+          // Get unique users
+          const uniqueUsers = new Map();
+          postsData.forEach(post => {
+            if (!uniqueUsers.has(post.user_id) && 
+                !fellowships.find(f => f.fellow_id === post.user_id) &&
+                post.user_name.toLowerCase().includes(searchTerm.toLowerCase())) {
+              uniqueUsers.set(post.user_id, post.user_name);
+            }
+          });
+          
+          searchResults = Array.from(uniqueUsers, ([user_id, user_name]) => ({
+            user_id,
+            user_name
+          })).slice(0, 10);
+        }
+      }
     }
     
     searching = false;
@@ -99,28 +185,73 @@
     const user = await authStore.getUser();
     if (!user) return;
     
-    const { error } = await supabase
-      .from('fellowships')
-      .insert({
-        user_id: user.id,
-        fellow_id: fellowId
+    // Save the fellow's name directly to user_profiles table
+    if (fellowName && fellowName !== 'Unknown') {
+      await supabase
+        .from('user_profiles')
+        .upsert({
+          user_id: fellowId,
+          display_name: fellowName
+        }, {
+          onConflict: 'user_id'
+        });
+    }
+    
+    // Send fellowship request
+    const { data, error } = await supabase
+      .rpc('send_fellowship_request', {
+        p_from_user_id: user.id,
+        p_to_user_id: fellowId
       });
     
     if (error) {
-      console.error('Error adding to fellowship:', error);
-      alert('Failed to add to fellowship');
-    } else {
-      // Add to local list immediately
-      fellowships = [...fellowships, {
-        fellow_id: fellowId,
-        fellow_name: fellowName,
-        created_at: new Date().toISOString()
-      }];
+      console.error('Error sending request:', error);
+      // Fallback to direct insert
+      const { error: insertError } = await supabase
+        .from('fellowship_requests')
+        .insert({
+          from_user_id: user.id,
+          to_user_id: fellowId,
+          status: 'pending'
+        });
       
-      // Clear search
-      searchTerm = '';
-      searchResults = [];
+      if (!insertError) {
+        alert('Fellowship request sent!');
+      } else {
+        alert('Failed to send fellowship request');
+      }
+    } else if (data?.success) {
+      if (data.message === 'Fellowship established (mutual request)') {
+        // They already requested us - auto accepted
+        await loadFellowships();
+        alert('Fellowship established! They had already requested you.');
+      } else if (data.message === 'Already in fellowship') {
+        alert('You are already in fellowship with this person');
+      } else if (data.message === 'Request already pending') {
+        alert('Fellowship request already pending');
+      } else {
+        alert('Fellowship request sent!');
+      }
     }
+    
+    // Clear search
+    searchTerm = '';
+    searchResults = [];
+  }
+  
+  function formatDate(dateString: string) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    return date.toLocaleDateString();
   }
   
   async function removeFromFellowship(fellowId: string) {
@@ -158,66 +289,123 @@
       </div>
       
       <div class="modal-content">
-        <!-- Search Section -->
-        <div class="search-section">
-          <input
-            type="text"
-            placeholder="Search for believers to add..."
-            bind:value={searchTerm}
-            on:input={searchUsers}
-            class="search-input"
-          />
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+          <button 
+            class="tab-btn {activeTab === 'requests' ? 'active' : ''}"
+            on:click={() => activeTab = 'requests'}
+          >
+            ✉️ Requests {#if incomingRequests.length > 0}({incomingRequests.length}){/if}
+          </button>
+          <button 
+            class="tab-btn {activeTab === 'fellowship' ? 'active' : ''}"
+            on:click={() => activeTab = 'fellowship'}
+          >
+            👥 Fellowship ({fellowships.length})
+          </button>
+        </div>
+        
+        {#if activeTab === 'requests'}
+          <!-- Requests Tab -->
+          <div class="requests-section">
+            {#if incomingRequests.length === 0}
+              <div class="empty">
+                <p>No pending fellowship requests</p>
+                <p class="hint">When someone wants to join your fellowship, it will appear here</p>
+              </div>
+            {:else}
+              <div class="requests-list">
+                {#each incomingRequests as request}
+                  <div class="request-card">
+                    <div class="request-info">
+                      <span class="request-icon">👤</span>
+                      <div class="request-details">
+                        <span class="request-name">{request.from_user_name}</span>
+                        <span class="request-time">Requested {formatDate(request.created_at)}</span>
+                      </div>
+                    </div>
+                    <div class="request-actions">
+                      <button 
+                        class="accept-btn"
+                        on:click={() => acceptRequest(request.request_id, request.from_user_id)}
+                      >
+                        ✓ Accept
+                      </button>
+                      <button 
+                        class="decline-btn"
+                        on:click={() => declineRequest(request.request_id)}
+                      >
+                        ✕ Decline
+                      </button>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        {:else}
+          <!-- Fellowship Tab -->
+          <!-- Search Section -->
+          <div class="search-section">
+            <input
+              type="text"
+              placeholder="Search for believers to add..."
+              bind:value={searchTerm}
+              on:input={searchUsers}
+              class="search-input"
+            />
+            
+            {#if searching}
+              <div class="searching">Searching...</div>
+            {/if}
+            
+            {#if searchResults.length > 0}
+              <div class="search-results">
+                {#each searchResults as result}
+                  <div class="search-result">
+                    <span class="user-name">{result.user_name}</span>
+                    <button 
+                      class="add-btn"
+                      on:click={() => addToFellowship(result.user_id, result.user_name)}
+                    >
+                      ➕ Send Request
+                    </button>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </div>
           
-          {#if searching}
-            <div class="searching">Searching...</div>
-          {/if}
-          
-          {#if searchResults.length > 0}
-            <div class="search-results">
-              {#each searchResults as result}
-                <div class="search-result">
-                  <span class="user-name">{result.user_name}</span>
+          <!-- Fellowship List -->
+          <div class="fellowship-list">
+            <h3>Fellowship Members</h3>
+            
+            {#if loading}
+              <div class="loading">Loading fellowship...</div>
+            {:else if fellowships.length === 0}
+              <div class="empty">
+                <p>No one in your fellowship yet.</p>
+                <p class="hint">Search above to send fellowship requests!</p>
+              </div>
+            {:else}
+              {#each fellowships as fellow}
+                <div class="fellow-card">
+                  <div class="fellow-info">
+                    <span class="fellow-icon">👤</span>
+                    <span class="fellow-name">{fellow.fellow_name}</span>
+                  </div>
                   <button 
-                    class="add-btn"
-                    on:click={() => addToFellowship(result.user_id, result.user_name)}
+                    class="remove-btn"
+                    on:click={() => removeFromFellowship(fellow.fellow_id)}
+                    title="Remove from fellowship"
                   >
-                    ➕ Add
+                    ✕
                   </button>
                 </div>
               {/each}
-            </div>
-          {/if}
-        </div>
-        
-        <!-- Fellowship List -->
-        <div class="fellowship-list">
-          <h3>Fellowship Members ({fellowships.length})</h3>
-          
-          {#if loading}
-            <div class="loading">Loading fellowship...</div>
-          {:else if fellowships.length === 0}
-            <div class="empty">
-              <p>No one in your fellowship yet.</p>
-              <p class="hint">Search above to add fellow believers!</p>
-            </div>
-          {:else}
-            {#each fellowships as fellow}
-              <div class="fellow-card">
-                <div class="fellow-info">
-                  <span class="fellow-icon">👤</span>
-                  <span class="fellow-name">{fellow.fellow_name}</span>
-                </div>
-                <button 
-                  class="remove-btn"
-                  on:click={() => removeFromFellowship(fellow.fellow_id)}
-                  title="Remove from fellowship"
-                >
-                  ✕
-                </button>
-              </div>
-            {/each}
-          {/if}
-        </div>
+            {/if}
+          </div>
+        {/if}
       </div>
     </div>
   </div>
@@ -310,6 +498,125 @@
     flex: 1;
     overflow-y: auto;
     padding: 1.5rem;
+  }
+  
+  .tab-nav {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-gold);
+    padding-bottom: 0.5rem;
+  }
+  
+  .tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-scripture);
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+    font-family: inherit;
+  }
+  
+  .tab-btn:hover {
+    color: var(--text-divine);
+  }
+  
+  .tab-btn.active {
+    color: var(--text-divine);
+    border-bottom-color: var(--primary-gold);
+  }
+  
+  .requests-section {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  .requests-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .request-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+  
+  .request-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 215, 0, 0.3);
+  }
+  
+  .request-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .request-icon {
+    font-size: 1.8rem;
+  }
+  
+  .request-details {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .request-name {
+    color: var(--text-light);
+    font-size: 1rem;
+    font-weight: 500;
+  }
+  
+  .request-time {
+    color: var(--text-scripture);
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+  }
+  
+  .request-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .accept-btn, .decline-btn {
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+    border: none;
+  }
+  
+  .accept-btn {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+  }
+  
+  .accept-btn:hover {
+    background: rgba(76, 175, 80, 0.3);
+    transform: scale(1.05);
+  }
+  
+  .decline-btn {
+    background: rgba(255, 87, 34, 0.2);
+    color: #ff5722;
+    border: 1px solid rgba(255, 87, 34, 0.3);
+  }
+  
+  .decline-btn:hover {
+    background: rgba(255, 87, 34, 0.3);
+    transform: scale(1.05);
   }
   
   .search-section {

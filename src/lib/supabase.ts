@@ -18,6 +18,15 @@ export const signUp = async (email: string, password: string, name: string) => {
       }
     }
   });
+  
+  // Create user profile immediately after signup
+  if (data?.user && !error) {
+    await supabase.from('user_profiles').insert({
+      user_id: data.user.id,
+      display_name: name || email.split('@')[0]
+    }).single();
+  }
+  
   return { data, error };
 };
 
@@ -26,6 +35,18 @@ export const signIn = async (email: string, password: string) => {
     email,
     password
   });
+  
+  // Ensure user profile exists
+  if (data?.user && !error) {
+    const displayName = data.user.user_metadata?.name || email.split('@')[0];
+    await supabase.from('user_profiles').upsert({
+      user_id: data.user.id,
+      display_name: displayName
+    }, {
+      onConflict: 'user_id'
+    });
+  }
+  
   return { data, error };
 };
 

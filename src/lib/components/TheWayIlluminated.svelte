@@ -17,6 +17,9 @@
   let isMobile = false;
   let showFellowshipManager = false;
   let fellowships: Set<string> = new Set();
+  let pendingRequests: Set<string> = new Set();
+  let incomingRequests: Set<string> = new Set();
+  let requestCount = 0;
   
   // Chat rooms
   interface ChatRoom {
@@ -66,6 +69,7 @@
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
     await loadFellowships();
+    await loadFellowshipRequests();
     await loadMessages();
     await updatePresence();
     setupRealtimeSubscriptions();
@@ -225,6 +229,32 @@
     } else if (data) {
       fellowships = new Set(data.map((f: any) => f.fellow_id));
       console.log('Loaded fellowships:', fellowships);
+    }
+  }
+  
+  async function loadFellowshipRequests() {
+    const user = await getCurrentUser();
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .rpc('get_fellowship_requests', { p_user_id: user.id });
+    
+    if (!error && data) {
+      pendingRequests.clear();
+      incomingRequests.clear();
+      requestCount = 0;
+      
+      data.forEach((req: any) => {
+        if (req.direction === 'sent') {
+          pendingRequests.add(req.to_user_id);
+        } else if (req.direction === 'received') {
+          incomingRequests.add(req.from_user_id);
+          requestCount++;
+        }
+      });
+      
+      pendingRequests = new Set(pendingRequests);
+      incomingRequests = new Set(incomingRequests);
     }
   }
   
@@ -565,48 +595,109 @@
     const user = await getCurrentUser();
     if (!user) return;
     
-    console.log('Toggling fellowship for:', userId, userName);
+    // Save the user's name directly to user_profiles table (skip RPC function)
+    if (userName && userName !== 'Unknown') {
+      await supabase
+        .from('user_profiles')
+        .upsert({
+          user_id: userId,
+          display_name: userName
+        }, {
+          onConflict: 'user_id'
+        });
+    }
     
     if (fellowships.has(userId)) {
-      // Remove from fellowship
+      // Already in fellowship - remove
       const { error } = await supabase
         .from('fellowships')
         .delete()
-        .eq('user_id', user.id)
-        .eq('fellow_id', userId);
+        .match({ user_id: user.id, fellow_id: userId });
       
       if (!error) {
+        // Also remove reverse fellowship
+        await supabase
+          .from('fellowships')
+          .delete()
+          .match({ user_id: userId, fellow_id: user.id });
+        
         fellowships.delete(userId);
         fellowships = new Set(fellowships);
-        console.log('Removed from fellowship');
-      } else {
-        console.error('Error removing from fellowship:', error);
-        alert('Failed to remove from fellowship');
       }
-    } else {
-      // Add to fellowship
-      // First save the fellow's name to user_profiles
-      if (userName && userName !== 'Unknown') {
-        await supabase.rpc('upsert_user_profile', {
-          p_user_id: userId,
-          p_display_name: userName
-        });
-      }
-      
-      const { error } = await supabase
-        .from('fellowships')
-        .insert({
-          user_id: user.id,
-          fellow_id: userId
+    } else if (pendingRequests.has(userId)) {
+      // Cancel pending request
+      const { data, error } = await supabase
+        .rpc('cancel_fellowship_request', {
+          p_from_user_id: user.id,
+          p_to_user_id: userId
         });
       
       if (!error) {
-        fellowships.add(userId);
-        fellowships = new Set(fellowships);
-        console.log('Added to fellowship');
-      } else {
-        console.error('Error adding to fellowship:', error);
-        alert('Failed to add to fellowship');
+        pendingRequests.delete(userId);
+        pendingRequests = new Set(pendingRequests);
+      }
+    } else if (incomingRequests.has(userId)) {
+      // Accept incoming request
+      const { data: requests } = await supabase
+        .rpc('get_fellowship_requests', { p_user_id: user.id });
+      
+      const request = requests?.find((r: any) => 
+        r.from_user_id === userId && r.direction === 'received'
+      );
+      
+      if (request) {
+        const { data, error } = await supabase
+          .rpc('accept_fellowship_request', {
+            p_request_id: request.request_id,
+            p_user_id: user.id
+          });
+        
+        if (!error) {
+          incomingRequests.delete(userId);
+          incomingRequests = new Set(incomingRequests);
+          fellowships.add(userId);
+          fellowships = new Set(fellowships);
+          requestCount = Math.max(0, requestCount - 1);
+        }
+      }
+    } else {
+      // Send new request
+      const { data, error } = await supabase
+        .rpc('send_fellowship_request', {
+          p_from_user_id: user.id,
+          p_to_user_id: userId
+        });
+      
+      console.log('Send fellowship request result:', data, error);
+      
+      if (!error && data?.success) {
+        if (data.message === 'Fellowship established (mutual request)') {
+          // Mutual request - they're now fellows
+          fellowships.add(userId);
+          fellowships = new Set(fellowships);
+          incomingRequests.delete(userId);
+          incomingRequests = new Set(incomingRequests);
+          requestCount = Math.max(0, requestCount - 1);
+        } else {
+          // Request sent
+          pendingRequests.add(userId);
+          pendingRequests = new Set(pendingRequests);
+        }
+      } else if (error) {
+        console.error('Fellowship request error:', error);
+        // Fallback: try direct fellowship add if requests system fails
+        const { error: fellowshipError } = await supabase
+          .from('fellowships')
+          .insert({
+            user_id: user.id,
+            fellow_id: userId
+          });
+        
+        if (!fellowshipError) {
+          fellowships.add(userId);
+          fellowships = new Set(fellowships);
+          console.log('Added fellowship directly (fallback)');
+        }
       }
     }
   }
@@ -619,8 +710,15 @@
       <div class="sanctuary-emblem">⛪</div>
       <div class="sanctuary-title">THE WAY</div>
       <div class="sanctuary-subtitle">Where souls gather in His light</div>
-      <button class="fellowship-btn" on:click={() => showFellowshipManager = true} title="Manage Fellowship">
+      <button 
+        class="fellowship-btn {requestCount > 0 ? 'has-requests' : ''}" 
+        on:click={() => showFellowshipManager = true} 
+        title="Manage Fellowship"
+      >
         👥 Fellowship
+        {#if requestCount > 0}
+          <span class="request-badge">{requestCount}</span>
+        {/if}
       </button>
       <button class="exit-sanctuary" on:click={exitChat} title="Return to main app">
         ← Exit
@@ -647,12 +745,19 @@
           </div>
           {#if user.user_id !== $authStore?.id}
             <button 
-              class="sidebar-fellowship-btn"
+              class="sidebar-fellowship-btn {pendingRequests.has(user.user_id) ? 'pending' : ''} {incomingRequests.has(user.user_id) ? 'incoming' : ''}"
               on:click={() => toggleFellowship(user.user_id, user.user_name)}
-              title={fellowships.has(user.user_id) ? 'Remove from fellowship' : 'Add to fellowship'}
+              title={fellowships.has(user.user_id) ? 'Remove from fellowship' : 
+                     pendingRequests.has(user.user_id) ? 'Cancel request' :
+                     incomingRequests.has(user.user_id) ? 'Accept request' : 
+                     'Send fellowship request'}
             >
               {#if fellowships.has(user.user_id)}
                 <span>👥</span>
+              {:else if pendingRequests.has(user.user_id)}
+                <span>⏳</span>
+              {:else if incomingRequests.has(user.user_id)}
+                <span>✉️</span>
               {:else}
                 <span>+</span>
               {/if}
@@ -1062,6 +1167,28 @@
     background: rgba(255, 215, 0, 0.3);
     transform: scale(1.1);
     box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+  }
+  
+  .sidebar-fellowship-btn.pending {
+    background: rgba(255, 165, 0, 0.2);
+    border-color: orange;
+  }
+  
+  .sidebar-fellowship-btn.incoming {
+    background: rgba(76, 175, 80, 0.2);
+    border-color: #4caf50;
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);
+    }
+    50% {
+      transform: scale(1.05);
+      box-shadow: 0 0 10px 5px rgba(76, 175, 80, 0.4);
+    }
   }
   
   .sidebar-fellowship-btn span {

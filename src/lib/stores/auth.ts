@@ -21,12 +21,31 @@ function createAuthStore() {
     signUp: async (email: string, password: string, name: string) => {
       const { data, error } = await signUp(email, password, name);
       if (error) throw error;
+      
+      // Save user profile with name
+      if (data.user) {
+        await supabase.rpc('upsert_user_profile', {
+          p_user_id: data.user.id,
+          p_display_name: name || email.split('@')[0]
+        });
+      }
+      
       set(data.user);
       return data.user;
     },
     signIn: async (email: string, password: string) => {
       const { data, error } = await signIn(email, password);
       if (error) throw error;
+      
+      // Ensure user profile exists
+      if (data.user) {
+        const displayName = data.user.user_metadata?.name || email.split('@')[0];
+        await supabase.rpc('upsert_user_profile', {
+          p_user_id: data.user.id,
+          p_display_name: displayName
+        });
+      }
+      
       set(data.user);
       return data.user;
     },

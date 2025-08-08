@@ -1,0 +1,276 @@
+-- Safe Fellowship Fix - Checks for existing objects before creating
+-- Run this entire script in Supabase SQL Editor
+
+-- 1. Create User Profiles Table (if not exists)
+CREATE TABLE IF NOT EXISTS user_profiles (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  display_name TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create index for performance
+CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
+
+-- Enable RLS
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view all profiles" ON user_profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON user_profiles;
+DROP POLICY IF EXISTS "Users can insert own profile" ON user_profiles;
+
+-- Create policies for user_profiles
+CREATE POLICY "Users can view all profiles" ON user_profiles
+  FOR SELECT USING (true);
+
+CREATE POLICY "Users can update own profile" ON user_profiles
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own profile" ON user_profiles
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Grant permissions (using IF NOT EXISTS pattern isn't available for GRANT, so we just re-grant)
+GRANT ALL ON user_profiles TO authenticated;
+
+-- 2. Create/Replace upsert function
+CREATE OR REPLACE FUNCTION upsert_user_profile(
+  p_user_id UUID,
+  p_display_name TEXT
+)
+RETURNS void AS $$
+BEGIN
+  INSERT INTO user_profiles (user_id, display_name)
+  VALUES (p_user_id, p_display_name)
+  ON CONFLICT (user_id)
+  DO UPDATE SET 
+    display_name = EXCLUDED.display_name,
+    updated_at = NOW();
+END;
+$$ LANGUAGE plpgsql;
+
+-- 3. Create/Replace get_fellowship_members function
+CREATE OR REPLACE FUNCTION get_fellowship_members(for_user_id UUID)
+RETURNS TABLE(
+  fellow_id UUID,
+  fellow_name TEXT,
+  created_at TIMESTAMP WITH TIME ZONE
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    f.fellow_id,
+    COALESCE(up.display_name, au.email::TEXT, 'Unknown') as fellow_name,
+    f.created_at
+  FROM fellowships f
+  LEFT JOIN user_profiles up ON up.user_id = f.fellow_id
+  LEFT JOIN auth.users au ON au.id = f.fellow_id
+  WHERE f.user_id = for_user_id
+  ORDER BY f.created_at DESC;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 4. Create/Replace function to get all users (for search)
+CREATE OR REPLACE FUNCTION get_all_users_with_profiles()
+RETURNS TABLE(
+  user_id UUID,
+  display_name TEXT,
+  email TEXT
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    au.id as user_id,
+    COALESCE(
+      up.display_name, 
+      au.raw_user_meta_data->>'name',
+      SPLIT_PART(au.email::TEXT, '@', 1)
+    ) as display_name,
+    au.email::TEXT as email
+  FROM auth.users au
+  LEFT JOIN user_profiles up ON up.user_id = au.id
+  WHERE au.deleted_at IS NULL
+  ORDER BY COALESCE(up.display_name, au.email::TEXT);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 5. Create/Replace fellowship feed function
+CREATE OR REPLACE FUNCTION get_fellowship_feed(for_user_id UUID)
+RETURNS TABLE(
+  post_id UUID,
+  user_id UUID,
+  user_name TEXT,
+  content TEXT,
+  share_type TEXT,
+  is_anonymous BOOLEAN,
+  created_at TIMESTAMP WITH TIME ZONE
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    cp.id as post_id,
+    cp.user_id,
+    CASE 
+      WHEN cp.is_anonymous THEN 'Anonymous'
+      ELSE COALESCE(up.display_name, cp.user_name, au.email::TEXT, 'Unknown')
+    END as user_name,
+    cp.content,
+    cp.share_type,
+    cp.is_anonymous,
+    cp.created_at
+  FROM community_posts cp
+  LEFT JOIN user_profiles up ON up.user_id = cp.user_id
+  LEFT JOIN auth.users au ON au.id = cp.user_id
+  WHERE cp.user_id IN (
+    SELECT fellow_id FROM fellowships WHERE user_id = for_user_id
+    UNION
+    SELECT for_user_id -- Include own posts
+  )
+  ORDER BY cp.created_at DESC
+  LIMIT 50;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION upsert_user_profile TO authenticated;
+GRANT EXECUTE ON FUNCTION get_fellowship_members TO authenticated;
+GRANT EXECUTE ON FUNCTION get_all_users_with_profiles TO authenticated;
+GRANT EXECUTE ON FUNCTION get_fellowship_feed TO authenticated;
+
+-- 6. Populate user_profiles from existing data
+
+-- First, populate from auth.users metadata (only for users not already in the table)
+INSERT INTO user_profiles (user_id, display_name)
+SELECT 
+  id,
+  COALESCE(
+    raw_user_meta_data->>'name',
+    SPLIT_PART(email::TEXT, '@', 1)
+  )
+FROM auth.users
+WHERE deleted_at IS NULL
+  AND id NOT IN (SELECT user_id FROM user_profiles)
+ON CONFLICT (user_id) DO NOTHING;
+
+-- Then update with names from chat_messages (more recent)
+WITH latest_names AS (
+  SELECT DISTINCT ON (user_id)
+    user_id,
+    user_name,
+    created_at
+  FROM chat_messages
+  WHERE user_id IS NOT NULL 
+    AND user_name IS NOT NULL
+    AND user_name != ''
+    AND user_name != 'Unknown'
+  ORDER BY user_id, created_at DESC
+)
+UPDATE user_profiles up
+SET display_name = ln.user_name,
+    updated_at = NOW()
+FROM latest_names ln
+WHERE up.user_id = ln.user_id
+  AND (up.display_name IN ('Unknown', '') 
+       OR up.display_name IS NULL
+       OR up.display_name LIKE '%@%'); -- Update if it's still an email
+
+-- Also insert any missing users from chat_messages
+INSERT INTO user_profiles (user_id, display_name)
+SELECT DISTINCT ON (user_id)
+  user_id,
+  user_name
+FROM chat_messages
+WHERE user_id IS NOT NULL 
+  AND user_name IS NOT NULL
+  AND user_name != ''
+  AND user_name != 'Unknown'
+  AND user_id NOT IN (SELECT user_id FROM user_profiles)
+ORDER BY user_id, created_at DESC
+ON CONFLICT (user_id) DO NOTHING;
+
+-- Finally update with names from community_posts (if better)
+WITH latest_posts AS (
+  SELECT DISTINCT ON (user_id)
+    user_id,
+    user_name,
+    created_at
+  FROM community_posts
+  WHERE user_id IS NOT NULL 
+    AND user_name IS NOT NULL
+    AND user_name != ''
+    AND user_name != 'Unknown'
+  ORDER BY user_id, created_at DESC
+)
+UPDATE user_profiles up
+SET display_name = lp.user_name,
+    updated_at = NOW()
+FROM latest_posts lp
+WHERE up.user_id = lp.user_id
+  AND (up.display_name IN ('Unknown', '') 
+       OR up.display_name IS NULL
+       OR up.display_name LIKE '%@%'); -- Update if it's still an email
+
+-- Also insert any missing users from community_posts
+INSERT INTO user_profiles (user_id, display_name)
+SELECT DISTINCT ON (user_id)
+  user_id,
+  user_name
+FROM community_posts
+WHERE user_id IS NOT NULL 
+  AND user_name IS NOT NULL
+  AND user_name != ''
+  AND user_name != 'Unknown'
+  AND user_id NOT IN (SELECT user_id FROM user_profiles)
+ORDER BY user_id, created_at DESC
+ON CONFLICT (user_id) DO NOTHING;
+
+-- 7. Create or replace view for easy user lookup
+DROP VIEW IF EXISTS user_directory;
+CREATE VIEW user_directory AS
+SELECT 
+  au.id as user_id,
+  COALESCE(
+    up.display_name,
+    au.raw_user_meta_data->>'name',
+    SPLIT_PART(au.email::TEXT, '@', 1)
+  ) as display_name,
+  au.email,
+  au.created_at as member_since,
+  up.updated_at as last_profile_update
+FROM auth.users au
+LEFT JOIN user_profiles up ON up.user_id = au.id
+WHERE au.deleted_at IS NULL;
+
+-- Grant access to the view
+GRANT SELECT ON user_directory TO authenticated;
+
+-- 8. Create/Replace function to get user display name
+CREATE OR REPLACE FUNCTION get_user_display_name(p_user_id UUID)
+RETURNS TEXT AS $$
+BEGIN
+  RETURN (
+    SELECT COALESCE(
+      up.display_name,
+      au.raw_user_meta_data->>'name',
+      SPLIT_PART(au.email::TEXT, '@', 1),
+      'Unknown'
+    )
+    FROM auth.users au
+    LEFT JOIN user_profiles up ON up.user_id = au.id
+    WHERE au.id = p_user_id
+    LIMIT 1
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION get_user_display_name TO authenticated;
+
+-- Display completion message
+SELECT 
+  'Fellowship system fully updated!' as status,
+  COUNT(DISTINCT au.id) as total_users,
+  COUNT(DISTINCT up.user_id) as users_with_profiles,
+  COUNT(DISTINCT au.id) - COUNT(DISTINCT up.user_id) as users_without_profiles
+FROM auth.users au
+LEFT JOIN user_profiles up ON up.user_id = au.id
+WHERE au.deleted_at IS NULL;
