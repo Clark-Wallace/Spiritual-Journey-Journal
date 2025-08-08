@@ -120,7 +120,8 @@
           to_profile:user_profiles!fellowship_requests_to_user_id_fkey(display_name)
         `)
         .eq('to_user_id', user.id)
-        .eq('status', 'pending');
+        .eq('status', 'pending')
+        .neq('from_user_id', user.id); // Don't show self-requests
       
       if (!fallbackError && fallbackData) {
         console.log('Loaded requests via fallback:', fallbackData);
@@ -137,7 +138,9 @@
       }
     } else if (data) {
       console.log('Loaded requests via RPC:', data);
+      console.log('Filtering for received requests...');
       incomingRequests = data.filter((req: any) => req.direction === 'received');
+      console.log('Incoming requests after filter:', incomingRequests);
     }
   }
   
