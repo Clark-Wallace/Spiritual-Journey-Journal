@@ -14,6 +14,7 @@
   let userStatus: 'online' | 'praying' | 'reading' | 'away' = 'online';
   let subscription: any;
   let presenceSubscription: any;
+  let requestSubscription: any;
   let isMobile = false;
   let showFellowshipManager = false;
   let fellowships: Set<string> = new Set();
@@ -142,6 +143,9 @@
         console.log('Subscription status:', status);
       });
     
+    // Set up fellowship request subscription
+    setupRequestSubscription();
+    
     // Clean up existing presence subscription first
     if (presenceSubscription) {
       supabase.removeChannel(presenceSubscription);
@@ -168,6 +172,36 @@
     if (presenceSubscription) {
       supabase.removeChannel(presenceSubscription);
     }
+    if (requestSubscription) {
+      supabase.removeChannel(requestSubscription);
+    }
+  }
+  
+  async function setupRequestSubscription() {
+    const user = await getCurrentUser();
+    if (!user) return;
+    
+    // Clean up existing subscription
+    if (requestSubscription) {
+      supabase.removeChannel(requestSubscription);
+    }
+    
+    // Subscribe to fellowship requests for this user
+    requestSubscription = supabase
+      .channel('fellowship-requests-chat')
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'fellowship_requests',
+          filter: `to_user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Fellowship request change in chat:', payload);
+          loadFellowshipRequests();
+        }
+      )
+      .subscribe();
   }
   
   async function loadMessages() {
@@ -236,10 +270,40 @@
     const user = await getCurrentUser();
     if (!user) return;
     
+    console.log('Loading fellowship requests for:', user.id);
+    
     const { data, error } = await supabase
       .rpc('get_fellowship_requests', { p_user_id: user.id });
     
-    if (!error && data) {
+    if (error) {
+      console.error('Error loading fellowship requests:', error);
+      // Fallback: direct query
+      const { data: fallbackData } = await supabase
+        .from('fellowship_requests')
+        .select('*')
+        .or(`from_user_id.eq.${user.id},to_user_id.eq.${user.id}`)
+        .eq('status', 'pending');
+      
+      if (fallbackData) {
+        console.log('Loaded requests via fallback:', fallbackData);
+        pendingRequests.clear();
+        incomingRequests.clear();
+        requestCount = 0;
+        
+        fallbackData.forEach((req: any) => {
+          if (req.from_user_id === user.id) {
+            pendingRequests.add(req.to_user_id);
+          } else if (req.to_user_id === user.id) {
+            incomingRequests.add(req.from_user_id);
+            requestCount++;
+          }
+        });
+        
+        pendingRequests = new Set(pendingRequests);
+        incomingRequests = new Set(incomingRequests);
+      }
+    } else if (data) {
+      console.log('Loaded fellowship requests:', data);
       pendingRequests.clear();
       incomingRequests.clear();
       requestCount = 0;
@@ -256,6 +320,8 @@
       pendingRequests = new Set(pendingRequests);
       incomingRequests = new Set(incomingRequests);
     }
+    
+    console.log('Request count:', requestCount, 'Incoming:', incomingRequests.size);
   }
   
   async function loadOnlineUsers() {

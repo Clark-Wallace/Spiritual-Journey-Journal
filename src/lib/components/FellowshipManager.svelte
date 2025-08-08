@@ -265,6 +265,8 @@
     const user = await authStore.getUser();
     if (!user) return;
     
+    console.log('Sending fellowship request from', user.id, 'to', fellowId);
+    
     // Note: We can't save other users' profiles due to RLS policies
     // Their profile should already exist from when they signed up
     
@@ -274,6 +276,8 @@
         p_from_user_id: user.id,
         p_to_user_id: fellowId
       });
+    
+    console.log('Send request response:', data, error);
     
     if (error) {
       console.error('Error sending request:', error);
@@ -287,11 +291,14 @@
         });
       
       if (!insertError) {
+        console.log('Request sent via fallback');
         alert('Fellowship request sent!');
       } else {
+        console.error('Fallback also failed:', insertError);
         alert('Failed to send fellowship request');
       }
     } else if (data?.success) {
+      console.log('Request sent successfully:', data.message);
       if (data.message === 'Fellowship established (mutual request)') {
         // They already requested us - auto accepted
         await loadFellowships();
