@@ -4,6 +4,8 @@
   import { authStore, userInfo } from '../stores/auth';
   import { currentView } from '../stores';
   import VoiceRecorder from './VoiceRecorder.svelte';
+  import FellowshipManager from './FellowshipManager.svelte';
+  import ContextMenu from './ContextMenu.svelte';
   
   let messages: any[] = [];
   let onlineUsers: any[] = [];
@@ -14,6 +16,12 @@
   let subscription: any;
   let presenceSubscription: any;
   let isMobile = false;
+  let showFellowshipManager = false;
+  let fellowships: Set<string> = new Set();
+  let showContextMenu = false;
+  let contextMenuX = 0;
+  let contextMenuY = 0;
+  let selectedUser: any = null;
   
   // Chat rooms
   interface ChatRoom {
@@ -46,6 +54,7 @@
       isMobile = window.innerWidth <= 768;
     });
     
+    await loadFellowships();
     await loadMessages();
     await updatePresence();
     setupRealtimeSubscriptions();
@@ -170,6 +179,18 @@
     }
     
     loading = false;
+  }
+  
+  async function loadFellowships() {
+    const user = await getCurrentUser();
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .rpc('get_fellowship_members', { for_user_id: user.id });
+    
+    if (!error && data) {
+      fellowships = new Set(data.map((f: any) => f.fellow_id));
+    }
   }
   
   async function loadOnlineUsers() {
@@ -493,6 +514,63 @@
     console.error('Voice recording error:', event.detail.message);
     alert(event.detail.message);
   }
+  
+  function handleMessageRightClick(event: MouseEvent, message: any) {
+    event.preventDefault();
+    selectedUser = {
+      id: message.user_id,
+      name: message.user_name
+    };
+    contextMenuX = event.clientX;
+    contextMenuY = event.clientY;
+    showContextMenu = true;
+  }
+  
+  async function toggleFellowship(userId: string, userName: string) {
+    const user = await getCurrentUser();
+    if (!user) return;
+    
+    if (fellowships.has(userId)) {
+      // Remove from fellowship
+      const { error } = await supabase
+        .from('fellowships')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('fellow_id', userId);
+      
+      if (!error) {
+        fellowships.delete(userId);
+        fellowships = new Set(fellowships);
+      }
+    } else {
+      // Add to fellowship
+      const { error } = await supabase
+        .from('fellowships')
+        .insert({
+          user_id: user.id,
+          fellow_id: userId
+        });
+      
+      if (!error) {
+        fellowships.add(userId);
+        fellowships = new Set(fellowships);
+      }
+    }
+  }
+  
+  $: contextMenuItems = selectedUser ? [
+    {
+      label: fellowships.has(selectedUser.id) ? 'Remove from Fellowship' : 'Add to Fellowship',
+      icon: fellowships.has(selectedUser.id) ? '👥' : '➕',
+      action: () => toggleFellowship(selectedUser.id, selectedUser.name)
+    },
+    { divider: true },
+    {
+      label: 'Copy Name',
+      icon: '📋',
+      action: () => navigator.clipboard.writeText(selectedUser.name)
+    }
+  ] : [];
 </script>
 
 <div class="sanctuary-container">
@@ -502,6 +580,9 @@
       <div class="sanctuary-emblem">⛪</div>
       <div class="sanctuary-title">THE WAY</div>
       <div class="sanctuary-subtitle">Where souls gather in His light</div>
+      <button class="fellowship-btn" on:click={() => showFellowshipManager = true} title="Manage Fellowship">
+        👥 Fellowship
+      </button>
       <button class="exit-sanctuary" on:click={exitChat} title="Return to main app">
         ← Exit
       </button>
@@ -604,8 +685,11 @@
       {:else}
         {#each messages as message}
           <div class="divine-message">
-            <div class="messenger-seal">
+            <div class="messenger-seal" on:contextmenu={(e) => handleMessageRightClick(e, message)}>
               {getInitials(message.user_name || 'Anonymous')}
+              {#if fellowships.has(message.user_id)}
+                <span class="fellowship-indicator" title="In your fellowship">👤</span>
+              {/if}
             </div>
             <div class="message-scroll">
               <div class="scroll-header">
@@ -805,6 +889,26 @@
     font-size: 11px;
     font-style: italic;
     letter-spacing: 1px;
+  }
+  
+  .fellowship-btn {
+    position: absolute;
+    top: 10px;
+    right: 70px;
+    background: linear-gradient(135deg, var(--primary-gold), #ffb300);
+    border: 1px solid var(--border-gold);
+    color: var(--bg-dark);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  
+  .fellowship-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
   }
   
   .exit-sanctuary {
@@ -1224,6 +1328,18 @@
     font-size: 18px;
     box-shadow: 0 0 30px rgba(138, 43, 226, 0.2);
     position: relative;
+    cursor: context-menu;
+  }
+  
+  .fellowship-indicator {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    font-size: 0.75rem;
+    background: var(--bg-dark);
+    border-radius: 50%;
+    padding: 2px;
+    border: 1px solid var(--border-gold);
   }
   
   .messenger-seal::after {
