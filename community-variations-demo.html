@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community Section Variations - Interactive Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0a0a0f;
+            color: #f5f5f5;
+            overflow-x: hidden;
+        }
+        
+        /* Navigation */
+        .nav {
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.1), rgba(255, 215, 0, 0.1));
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .nav-btn {
+            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            color: #ffd700;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        
+        .nav-btn:hover {
+            background: rgba(255, 215, 0, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+        }
+        
+        .nav-btn.active {
+            background: linear-gradient(135deg, #ffd700, #ffb300);
+            color: #0a0a0f;
+        }
+        
+        /* Container */
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            min-height: 100vh;
+            padding-bottom: 2rem;
+        }
+        
+        .variation {
+            display: none;
+        }
+        
+        .variation.active {
+            display: block;
+        }
+        
+        /* Variation 1: Social Feed */
+        .social-feed {
+            padding: 1rem;
+        }
+        
+        .stories-bar {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem 0;
+            overflow-x: auto;
+            margin-bottom: 1rem;
+        }
+        
+        .story-bubble {
+            min-width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff6b6b, #ffd700);
+            padding: 3px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        
+        .story-bubble:hover {
+            transform: scale(1.1);
+        }
+        
+        .story-inner {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+        }
+        
+        .story-inner span {
+            font-size: 1.5rem;
+        }
+        
+        .feed-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 15px;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            animation: slideUp 0.5s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .feed-header {
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+        }
+        
+        .avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        
+        .feed-user-info {
+            flex: 1;
+        }
+        
+        .feed-username {
+            font-weight: 600;
+            color: #ffd700;
+            font-size: 0.95rem;
+        }
+        
+        .feed-mood {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #999;
+            font-size: 0.85rem;
+            margin-top: 0.2rem;
+        }
+        
+        .mood-emoji {
+            font-size: 1.2rem;
+        }
+        
+        .feed-content {
+            padding: 1rem;
+        }
+        
+        .journal-text {
+            line-height: 1.6;
+            margin-bottom: 1rem;
+            color: #e0e0e0;
+        }
+        
+        .gratitude-section {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.05), rgba(255, 193, 7, 0.03));
+            border-left: 3px solid #ffd700;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        
+        .gratitude-title {
+            color: #ffd700;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .gratitude-item {
+            color: #f0f0f0;
+            font-size: 0.9rem;
+            margin-bottom: 0.3rem;
+            padding-left: 1rem;
+        }
+        
+        .prayer-request {
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.1), rgba(30, 144, 255, 0.05));
+            border: 1px solid rgba(138, 43, 226, 0.3);
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+        
+        .prayer-label {
+            color: #b19cd9;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .feed-image {
+            width: 100%;
+            height: 300px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+        
+        .feed-actions {
+            padding: 1rem;
+            display: flex;
+            gap: 1.5rem;
+            border-top: 1px solid rgba(255, 215, 0, 0.1);
+        }
+        
+        .action-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #999;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: none;
+            border: none;
+            font-size: 0.95rem;
+        }
+        
+        .action-btn:hover {
+            color: #ffd700;
+            transform: scale(1.1);
+        }
+        
+        .action-btn span {
+            font-size: 1.3rem;
+        }
+        
+        /* Variation 2: Wall Style */
+        .wall-container {
+            padding: 1rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            grid-auto-flow: dense;
+        }
+        
+        .wall-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 1rem;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            transition: all 0.3s;
+            cursor: pointer;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        .wall-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.2);
+            border-color: #ffd700;
+        }
+        
+        .wall-card.prayer {
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.1), rgba(30, 144, 255, 0.05));
+            border-color: rgba(138, 43, 226, 0.3);
+            grid-row: span 1;
+        }
+        
+        .wall-card.testimony {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(255, 193, 7, 0.04));
+            border-color: rgba(255, 215, 0, 0.4);
+            grid-row: span 2;
+        }
+        
+        .wall-card.praise {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(139, 195, 74, 0.05));
+            border-color: rgba(76, 175, 80, 0.3);
+        }
+        
+        .wall-card.scripture {
+            background: linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(255, 193, 7, 0.05));
+            border-color: rgba(255, 152, 0, 0.3);
+            grid-column: span 2;
+        }
+        
+        .wall-type {
+            font-size: 0.75rem;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        .wall-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .wall-content {
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            margin-bottom: 1rem;
+        }
+        
+        .wall-author {
+            font-size: 0.8rem;
+            color: #ffd700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .wall-stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.85rem;
+            color: #999;
+            padding-top: 0.5rem;
+            border-top: 1px solid rgba(255, 215, 0, 0.1);
+        }
+        
+        .prayer-warriors {
+            color: #b19cd9;
+            font-weight: 600;
+        }
+        
+        /* Variation 3: Streams */
+        .streams-container {
+            height: 100vh;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            position: relative;
+        }
+        
+        .stream-card {
+            height: 100vh;
+            scroll-snap-align: start;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #1a1a2e 0%, #0a0a0f 100%);
+        }
+        
+        .stream-media {
+            flex: 1;
+            position: relative;
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.2), rgba(255, 215, 0, 0.1));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        .stream-video-placeholder {
+            font-size: 4rem;
+            color: rgba(255, 215, 0, 0.5);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 0.5;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 1;
+            }
+        }
+        
+        .stream-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            padding: 2rem 1rem;
+            color: white;
+        }
+        
+        .stream-username {
+            font-weight: 600;
+            color: #ffd700;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+        
+        .stream-text {
+            font-size: 1rem;
+            line-height: 1.5;
+            margin-bottom: 1rem;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        
+        .stream-tags {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        
+        .stream-tag {
+            color: #ffd700;
+            font-size: 0.85rem;
+            padding: 0.25rem 0.5rem;
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .stream-actions {
+            position: absolute;
+            right: 1rem;
+            bottom: 100px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        
+        .stream-action {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        
+        .stream-action:hover {
+            transform: scale(1.2);
+        }
+        
+        .stream-action-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .stream-action-count {
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .stream-music {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            right: 60px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: white;
+            font-size: 0.85rem;
+        }
+        
+        .music-icon {
+            animation: rotate 3s linear infinite;
+        }
+        
+        @keyframes rotate {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .swipe-indicator {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.8rem;
+            animation: bounce 1.5s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateX(-50%) translateY(0);
+            }
+            50% {
+                transform: translateX(-50%) translateY(-10px);
+            }
+        }
+        
+        /* Floating reactions */
+        .floating-reactions {
+            position: absolute;
+            bottom: 100px;
+            left: 1rem;
+            pointer-events: none;
+        }
+        
+        .floating-reaction {
+            position: absolute;
+            font-size: 2rem;
+            animation: floatUp 3s ease-out forwards;
+        }
+        
+        @keyframes floatUp {
+            0% {
+                transform: translateY(0) scale(0);
+                opacity: 1;
+            }
+            50% {
+                transform: translateY(-100px) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-200px) scale(0.5);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <div class="nav-buttons">
+            <button class="nav-btn active" onclick="showVariation('social')">
+                📱 Social Feed Style
+            </button>
+            <button class="nav-btn" onclick="showVariation('wall')">
+                🏛️ Community Wall
+            </button>
+            <button class="nav-btn" onclick="showVariation('streams')">
+                🌊 Journey Streams
+            </button>
+        </div>
+    </div>
+
+    <!-- Variation 1: Social Feed -->
+    <div id="social" class="variation active">
+        <div class="container">
+            <div class="social-feed">
+                <!-- Stories Bar -->
+                <div class="stories-bar">
+                    <div class="story-bubble">
+                        <div class="story-inner">
+                            <span>🔥</span>
+                            <small>Urgent</small>
+                        </div>
+                    </div>
+                    <div class="story-bubble">
+                        <div class="story-inner">
+                            <span>🙏</span>
+                            <small>Prayer</small>
+                        </div>
+                    </div>
+                    <div class="story-bubble">
+                        <div class="story-inner">
+                            <span>✨</span>
+                            <small>Praise</small>
+                        </div>
+                    </div>
+                    <div class="story-bubble">
+                        <div class="story-inner">
+                            <span>📖</span>
+                            <small>Word</small>
+                        </div>
+                    </div>
+                    <div class="story-bubble">
+                        <div class="story-inner">
+                            <span>💪</span>
+                            <small>Victory</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feed Card 1 -->
+                <div class="feed-card">
+                    <div class="feed-header">
+                        <div class="avatar">SM</div>
+                        <div class="feed-user-info">
+                            <div class="feed-username">Sarah Miller</div>
+                            <div class="feed-mood">
+                                <span class="mood-emoji">🙏</span>
+                                <span>Feeling Grateful • 2 hours ago</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="feed-content">
+                        <p class="journal-text">
+                            Today I witnessed God's faithfulness in an incredible way. After months of uncertainty about my job situation, I received not one but TWO job offers today! 
+                        </p>
+                        <div class="gratitude-section">
+                            <div class="gratitude-title">🌟 Today's Gratitude</div>
+                            <div class="gratitude-item">• Morning prayer answered</div>
+                            <div class="gratitude-item">• Family's unwavering support</div>
+                            <div class="gratitude-item">• New opportunities ahead</div>
+                        </div>
+                        <div class="prayer-request">
+                            <div class="prayer-label">🙏 Prayer Request</div>
+                            <p>Please pray for wisdom as I decide between these opportunities. I want to choose the path God has prepared for me.</p>
+                        </div>
+                    </div>
+                    <div class="feed-actions">
+                        <button class="action-btn">
+                            <span>❤️</span> 24
+                        </button>
+                        <button class="action-btn">
+                            <span>💬</span> 12
+                        </button>
+                        <button class="action-btn">
+                            <span>🙏</span> 8
+                        </button>
+                        <button class="action-btn">
+                            <span>↗️</span> Share
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Feed Card 2 with Image -->
+                <div class="feed-card">
+                    <div class="feed-header">
+                        <div class="avatar">JD</div>
+                        <div class="feed-user-info">
+                            <div class="feed-username">John Davidson</div>
+                            <div class="feed-mood">
+                                <span class="mood-emoji">😊</span>
+                                <span>Feeling Joyful • 5 hours ago</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="feed-image">
+                        [Baptism Photo Placeholder]
+                    </div>
+                    <div class="feed-content">
+                        <p class="journal-text">
+                            Best day of my life! Got baptized today and publicly declared my faith in Christ. The journey has just begun! 🎉
+                        </p>
+                    </div>
+                    <div class="feed-actions">
+                        <button class="action-btn">
+                            <span>❤️</span> 89
+                        </button>
+                        <button class="action-btn">
+                            <span>💬</span> 34
+                        </button>
+                        <button class="action-btn">
+                            <span>🎉</span> 45
+                        </button>
+                        <button class="action-btn">
+                            <span>↗️</span> Share
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Feed Card 3 -->
+                <div class="feed-card">
+                    <div class="feed-header">
+                        <div class="avatar">🕊️</div>
+                        <div class="feed-user-info">
+                            <div class="feed-username">Anonymous</div>
+                            <div class="feed-mood">
+                                <span class="mood-emoji">😰</span>
+                                <span>Feeling Anxious • 1 day ago</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="feed-content">
+                        <p class="journal-text">
+                            Struggling with anxiety about my health results. Trying to trust God but it's so hard...
+                        </p>
+                        <div class="prayer-request">
+                            <div class="prayer-label">🙏 Prayer Request</div>
+                            <p>Please pray for peace and healing. Waiting for test results this week.</p>
+                        </div>
+                    </div>
+                    <div class="feed-actions">
+                        <button class="action-btn">
+                            <span>❤️</span> 156
+                        </button>
+                        <button class="action-btn">
+                            <span>💬</span> 78
+                        </button>
+                        <button class="action-btn">
+                            <span>🙏</span> 234
+                        </button>
+                        <button class="action-btn">
+                            <span>↗️</span> Share
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Variation 2: Wall Style -->
+    <div id="wall" class="variation">
+        <div class="container">
+            <div class="wall-container">
+                <div class="wall-card prayer">
+                    <div class="wall-type">Prayer Request</div>
+                    <div class="wall-icon">🙏</div>
+                    <div class="wall-content">
+                        "Need healing for my mother. She's in the ICU."
+                    </div>
+                    <div class="wall-author">- Mark T.</div>
+                    <div class="wall-stats">
+                        <span class="prayer-warriors">47 🤲</span>
+                        <span>2h ago</span>
+                    </div>
+                </div>
+
+                <div class="wall-card testimony">
+                    <div class="wall-type">Testimony</div>
+                    <div class="wall-icon">✨</div>
+                    <div class="wall-content">
+                        "God showed up in an amazing way! After 3 years of infertility, we're finally pregnant! Never stop believing in His timing. What seemed impossible became possible through faith and prayer."
+                    </div>
+                    <div class="wall-author">- Sarah & James</div>
+                    <div class="wall-stats">
+                        <span>❤️ 234</span>
+                        <span>🎉 89</span>
+                        <span>1d ago</span>
+                    </div>
+                </div>
+
+                <div class="wall-card scripture">
+                    <div class="wall-type">Daily Verse</div>
+                    <div class="wall-icon">📖</div>
+                    <div class="wall-content">
+                        "For I know the plans I have for you, declares the Lord, plans to prosper you and not to harm you, plans to give you hope and a future."
+                    </div>
+                    <div class="wall-author">Jeremiah 29:11</div>
+                    <div class="wall-stats">
+                        <span>💛 156</span>
+                        <span>📌 Save</span>
+                    </div>
+                </div>
+
+                <div class="wall-card praise">
+                    <div class="wall-type">Praise Report</div>
+                    <div class="wall-icon">🎉</div>
+                    <div class="wall-content">
+                        "Got the job! Thank you all for praying!"
+                    </div>
+                    <div class="wall-author">- David L.</div>
+                    <div class="wall-stats">
+                        <span>🎊 78</span>
+                        <span>3h ago</span>
+                    </div>
+                </div>
+
+                <div class="wall-card prayer">
+                    <div class="wall-type">Urgent Prayer</div>
+                    <div class="wall-icon">🔥</div>
+                    <div class="wall-content">
+                        "Surgery tomorrow morning. Scared but trusting God."
+                    </div>
+                    <div class="wall-author">- Anonymous</div>
+                    <div class="wall-stats">
+                        <span class="prayer-warriors">89 🤲</span>
+                        <span>Now</span>
+                    </div>
+                </div>
+
+                <div class="wall-card testimony">
+                    <div class="wall-type">Testimony</div>
+                    <div class="wall-icon">💪</div>
+                    <div class="wall-content">
+                        "5 years clean and sober today! God's grace is sufficient. If He can save me, He can save anyone. Don't give up!"
+                    </div>
+                    <div class="wall-author">- Michael R.</div>
+                    <div class="wall-stats">
+                        <span>❤️ 567</span>
+                        <span>💪 234</span>
+                        <span>6h ago</span>
+                    </div>
+                </div>
+
+                <div class="wall-card praise">
+                    <div class="wall-type">Praise</div>
+                    <div class="wall-icon">🌟</div>
+                    <div class="wall-content">
+                        "Baby arrived healthy! God is good!"
+                    </div>
+                    <div class="wall-author">- The Johnsons</div>
+                    <div class="wall-stats">
+                        <span>👶 156</span>
+                        <span>1d ago</span>
+                    </div>
+                </div>
+
+                <div class="wall-card scripture">
+                    <div class="wall-type">Memory Verse</div>
+                    <div class="wall-icon">📜</div>
+                    <div class="wall-content">
+                        "Be strong and courageous. Do not be afraid; do not be discouraged, for the Lord your God will be with you wherever you go."
+                    </div>
+                    <div class="wall-author">Joshua 1:9</div>
+                    <div class="wall-stats">
+                        <span>💛 89</span>
+                        <span>📌 Save</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Variation 3: Streams -->
+    <div id="streams" class="variation">
+        <div class="streams-container">
+            <!-- Stream Card 1 -->
+            <div class="stream-card">
+                <div class="stream-media">
+                    <div class="stream-video-placeholder">📹</div>
+                    <div class="floating-reactions" id="reactions1"></div>
+                </div>
+                <div class="stream-overlay">
+                    <div class="stream-username">@jessica_faith</div>
+                    <div class="stream-text">
+                        How God transformed my life from depression to joy! This is my testimony of His faithfulness through the darkest valley...
+                    </div>
+                    <div class="stream-tags">
+                        <span class="stream-tag">#Testimony</span>
+                        <span class="stream-tag">#GodIsGood</span>
+                        <span class="stream-tag">#MentalHealth</span>
+                    </div>
+                </div>
+                <div class="stream-actions">
+                    <div class="stream-action" onclick="addFloatingReaction('❤️', 'reactions1')">
+                        <div class="stream-action-icon">❤️</div>
+                        <div class="stream-action-count">1.2K</div>
+                    </div>
+                    <div class="stream-action" onclick="addFloatingReaction('🙏', 'reactions1')">
+                        <div class="stream-action-icon">🙏</div>
+                        <div class="stream-action-count">892</div>
+                    </div>
+                    <div class="stream-action">
+                        <div class="stream-action-icon">💬</div>
+                        <div class="stream-action-count">234</div>
+                    </div>
+                    <div class="stream-action">
+                        <div class="stream-action-icon">↗️</div>
+                        <div class="stream-action-count">Share</div>
+                    </div>
+                </div>
+                <div class="stream-music">
+                    <span class="music-icon">🎵</span>
+                    <span>Way Maker - Sinach</span>
+                </div>
+                <div class="swipe-indicator">⬆️ Swipe up for next</div>
+            </div>
+
+            <!-- Stream Card 2 -->
+            <div class="stream-card">
+                <div class="stream-media" style="background: linear-gradient(135deg, rgba(255, 87, 34, 0.2), rgba(255, 193, 7, 0.1));">
+                    <div class="stream-video-placeholder">🙏</div>
+                    <div class="floating-reactions" id="reactions2"></div>
+                </div>
+                <div class="stream-overlay">
+                    <div class="stream-username">@prayer_warrior</div>
+                    <div class="stream-text">
+                        URGENT: Please join me in prayer for the victims of the earthquake. God, we need Your healing touch! 🙏
+                    </div>
+                    <div class="stream-tags">
+                        <span class="stream-tag">#UrgentPrayer</span>
+                        <span class="stream-tag">#PrayForTurkey</span>
+                        <span class="stream-tag">#Faith</span>
+                    </div>
+                </div>
+                <div class="stream-actions">
+                    <div class="stream-action" onclick="addFloatingReaction('🙏', 'reactions2')">
+                        <div class="stream-action-icon">🙏</div>
+                        <div class="stream-action-count">5.6K</div>
+                    </div>
+                    <div class="stream-action" onclick="addFloatingReaction('❤️', 'reactions2')">
+                        <div class="stream-action-icon">❤️</div>
+                        <div class="stream-action-count">3.2K</div>
+                    </div>
+                    <div class="stream-action">
+                        <div class="stream-action-icon">💬</div>
+                        <div class="stream-action-count">789</div>
+                    </div>
+                    <div class="stream-action">
+                        <div class="stream-action-icon">↗️</div>
+                        <div class="stream-action-count">Share</div>
+                    </div>
+                </div>
+                <div class="stream-music">
+                    <span class="music-icon">🎵</span>
+                    <span>Healing Rain - Michael W. Smith</span>
+                </div>
+                <div class="swipe-indicator">⬆️ Swipe up for next</div>
+            </div>
+
+            <!-- Stream Card 3 -->
+            <div class="stream-card">
+                <div class="stream-media" style="background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(139, 195, 74, 0.1));">
+                    <div class="stream-video-placeholder">✨</div>
+                    <div class="floating-reactions" id="reactions3"></div>
+                </div>
+                <div class="stream-overlay">
+                    <div class="stream-username">@miraclemom</div>
+                    <div class="stream-text">
+                        After 10 years of waiting... WE'RE PREGNANT! 🎉 Never stop believing in God's perfect timing! Full story in my testimony...
+                    </div>
+                    <div class="stream-tags">
+                        <span class="stream-tag">#Miracle</span>
+                        <span class="stream-tag">#GodsTiming</span>
+                        <span class="stream-tag">#Testimony</span>
+                        <span class="stream-tag">#Blessed</span>
+                    </div>
+                </div>
+                <div class="stream-actions">
+                    <div class="stream-action" onclick="addFloatingReaction('🎉', 'reactions3')">
+                        <div class="stream-action-icon">🎉</div>
+                        <div class="stream-action-count">8.9K</div>
+                    </div>
+                    <div class="stream-action" onclick="addFloatingReaction('❤️', 'reactions3')">
+                        <div class="stream-action-icon">❤️</div>
+                        <div class="stream-action-count">12K</div>
+                    </div>
+                    <div class="stream-action" onclick="addFloatingReaction('🙏', 'reactions3')">
+                        <div class="stream-action-icon">🙏</div>
+                        <div class="stream-action-count">4.5K</div>
+                    </div>
+                    <div class="stream-action">
+                        <div class="stream-action-icon">↗️</div>
+                        <div class="stream-action-count">Share</div>
+                    </div>
+                </div>
+                <div class="stream-music">
+                    <span class="music-icon">🎵</span>
+                    <span>Goodness of God - Bethel Music</span>
+                </div>
+                <div class="swipe-indicator">⬆️ Swipe up for next</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showVariation(type) {
+            // Hide all variations
+            document.querySelectorAll('.variation').forEach(v => {
+                v.classList.remove('active');
+            });
+            
+            // Remove active from all buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected variation
+            document.getElementById(type).classList.add('active');
+            
+            // Mark button as active
+            event.target.classList.add('active');
+        }
+
+        // Floating reactions for streams
+        function addFloatingReaction(emoji, containerId) {
+            const container = document.getElementById(containerId);
+            const reaction = document.createElement('div');
+            reaction.className = 'floating-reaction';
+            reaction.textContent = emoji;
+            reaction.style.left = Math.random() * 100 + 'px';
+            reaction.style.animationDelay = Math.random() * 0.5 + 's';
+            container.appendChild(reaction);
+            
+            setTimeout(() => {
+                reaction.remove();
+            }, 3000);
+        }
+
+        // Auto-add some floating reactions periodically
+        setInterval(() => {
+            if (document.getElementById('streams').classList.contains('active')) {
+                const emojis = ['❤️', '🙏', '✨', '🎉', '💪'];
+                const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+                const containers = ['reactions1', 'reactions2', 'reactions3'];
+                const randomContainer = containers[Math.floor(Math.random() * containers.length)];
+                addFloatingReaction(randomEmoji, randomContainer);
+            }
+        }, 2000);
+
+        // Simulate scroll snapping for streams
+        const streamsContainer = document.querySelector('.streams-container');
+        if (streamsContainer) {
+            let isScrolling = false;
+            streamsContainer.addEventListener('scroll', () => {
+                if (!isScrolling) {
+                    window.requestAnimationFrame(() => {
+                        // Scroll handling
+                        isScrolling = false;
+                    });
+                    isScrolling = true;
+                }
+            });
+        }
+    </script>
+</body>
+</html>
