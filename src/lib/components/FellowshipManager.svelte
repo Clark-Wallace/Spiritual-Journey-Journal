@@ -88,10 +88,36 @@
         p_user_id: user.id
       });
     
-    if (!error) {
-      await loadRequests();
-      await loadFellowships();
+    if (error) {
+      console.error('Error accepting via RPC:', error);
+      // Fallback: manually update request and create fellowships
+      
+      // Update request status
+      const { error: updateError } = await supabase
+        .from('fellowship_requests')
+        .update({ 
+          status: 'accepted',
+          responded_at: new Date().toISOString()
+        })
+        .eq('id', requestId)
+        .eq('to_user_id', user.id);
+      
+      if (!updateError) {
+        // Create mutual fellowship
+        await supabase
+          .from('fellowships')
+          .insert([
+            { user_id: user.id, fellow_id: fromUserId },
+            { user_id: fromUserId, fellow_id: user.id }
+          ]);
+        
+        console.log('Accepted via fallback');
+      }
     }
+    
+    // Reload data
+    await loadRequests();
+    await loadFellowships();
   }
   
   async function declineRequest(requestId: string) {
@@ -104,9 +130,20 @@
         p_user_id: user.id
       });
     
-    if (!error) {
-      await loadRequests();
+    if (error) {
+      console.error('Error declining via RPC:', error);
+      // Fallback: manually update request status
+      await supabase
+        .from('fellowship_requests')
+        .update({ 
+          status: 'declined',
+          responded_at: new Date().toISOString()
+        })
+        .eq('id', requestId)
+        .eq('to_user_id', user.id);
     }
+    
+    await loadRequests();
   }
   
   async function searchUsers() {
