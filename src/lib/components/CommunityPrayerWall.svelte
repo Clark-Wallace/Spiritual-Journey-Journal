@@ -655,7 +655,6 @@
   }
   
   /* Removed unused float animation */
-  }
   
   /* Praise report style */
   .praise-note {
