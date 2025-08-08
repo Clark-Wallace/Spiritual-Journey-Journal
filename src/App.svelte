@@ -10,10 +10,7 @@
   import StreakDisplay from './lib/components/StreakDisplay.svelte';
   import ScriptureGuide from './lib/components/ScriptureGuide.svelte';
   import CommunityFeed from './lib/components/CommunityFeedCompact.svelte';
-  import CommunityPrayerWall from './lib/components/CommunityPrayerWall.svelte';
   import TheWay from './lib/components/TheWayIlluminated.svelte';
-  
-  let communityView: 'feed' | 'wall' = 'wall'; // Default to prayer wall
   
   onMount(async () => {
     await authStore.initialize();
@@ -103,8 +100,6 @@
   
   {#if $currentView === 'theway'}
     <TheWay />
-  {:else if $currentView === 'community' && communityView === 'wall'}
-    <CommunityPrayerWall />
   {:else}
     <div class="content">
       {#if $currentView === 'home'}
@@ -131,17 +126,7 @@
       {:else if $currentView === 'guidance'}
         <ScriptureGuide />
       {:else if $currentView === 'community'}
-        <div class="community-view-toggle">
-          <button class="toggle-btn" class:active={communityView === 'wall'} on:click={() => communityView = 'wall'}>
-            🏛️ Prayer Wall
-          </button>
-          <button class="toggle-btn" class:active={communityView === 'feed'} on:click={() => communityView = 'feed'}>
-            📱 Feed View
-          </button>
-        </div>
-        {#if communityView === 'feed'}
-          <CommunityFeed />
-        {/if}
+        <CommunityFeed />
       {/if}
     </div>
   {/if}
@@ -396,42 +381,6 @@
     border: none;
     border-top: 1px solid #e0e0e0;
     margin: 2rem 0;
-  }
-  
-  /* Community View Toggle */
-  .community-view-toggle {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    padding: 1rem 0;
-    margin-bottom: 1rem;
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: 10px;
-  }
-  
-  .toggle-btn {
-    padding: 0.75rem 1.5rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-gold);
-    color: var(--text-holy);
-    border-radius: 25px;
-    cursor: pointer;
-    transition: all 0.3s;
-    font-size: 0.95rem;
-    font-weight: 600;
-    font-family: inherit;
-  }
-  
-  .toggle-btn:hover {
-    background: rgba(255, 215, 0, 0.1);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
-  }
-  
-  .toggle-btn.active {
-    background: linear-gradient(135deg, var(--primary-gold), #ffb300);
-    color: var(--bg-dark);
-    border-color: transparent;
   }
   
   @media (max-width: 600px) {
