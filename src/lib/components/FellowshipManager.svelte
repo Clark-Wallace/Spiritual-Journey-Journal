@@ -26,13 +26,65 @@
     const user = await authStore.getUser();
     if (!user) return;
     
+    // First try the RPC function
     const { data, error } = await supabase
       .rpc('get_fellowship_members', { for_user_id: user.id });
     
     if (error) {
       console.error('Error loading fellowships:', error);
+      // Fallback to direct query
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('fellowships')
+        .select('fellow_id, created_at')
+        .eq('user_id', user.id);
+      
+      if (!fallbackError && fallbackData) {
+        // Get names from recent chat messages or community posts
+        const fellowIds = fallbackData.map(f => f.fellow_id);
+        const { data: namesData } = await supabase
+          .from('chat_messages')
+          .select('user_id, user_name')
+          .in('user_id', fellowIds)
+          .limit(100);
+        
+        const nameMap = new Map();
+        namesData?.forEach(msg => {
+          if (!nameMap.has(msg.user_id)) {
+            nameMap.set(msg.user_id, msg.user_name);
+          }
+        });
+        
+        fellowships = fallbackData.map(f => ({
+          fellow_id: f.fellow_id,
+          fellow_name: nameMap.get(f.fellow_id) || 'Unknown',
+          created_at: f.created_at
+        }));
+      }
     } else {
-      fellowships = data || [];
+      // If RPC worked but names are empty, get them from chat messages
+      if (data && data.length > 0 && !data[0].fellow_name) {
+        const fellowIds = data.map(f => f.fellow_id);
+        const { data: namesData } = await supabase
+          .from('chat_messages')
+          .select('user_id, user_name')
+          .in('user_id', fellowIds)
+          .limit(100);
+        
+        const nameMap = new Map();
+        namesData?.forEach(msg => {
+          if (!nameMap.has(msg.user_id)) {
+            nameMap.set(msg.user_id, msg.user_name);
+          }
+        });
+        
+        fellowships = data.map(f => ({
+          fellow_id: f.fellow_id,
+          fellow_name: nameMap.get(f.fellow_id) || 'Unknown',
+          created_at: f.created_at
+        }));
+      } else {
+        fellowships = data || [];
+      }
     }
     
     loading = false;
