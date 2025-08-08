@@ -9,8 +9,7 @@
   import JournalListCollapsible from './lib/components/JournalListCollapsible.svelte';
   import StreakDisplay from './lib/components/StreakDisplay.svelte';
   import ScriptureGuide from './lib/components/ScriptureGuide.svelte';
-  import CommunityFeed from './lib/components/CommunityFeedCompact.svelte';
-  import TheFellowship from './lib/components/TheFellowship.svelte';
+  import CommunityWall from './lib/components/CommunityWall.svelte';
   import TheWay from './lib/components/TheWayIlluminated.svelte';
   
   onMount(async () => {
@@ -89,13 +88,7 @@
       class:active={$currentView === 'community'} 
       on:click={() => currentView.set('community')}
     >
-      🌍 Community
-    </button>
-    <button 
-      class:active={$currentView === 'fellowship'} 
-      on:click={() => currentView.set('fellowship')}
-    >
-      👥 Fellowship
+      📌 Prayer Wall
     </button>
     <button 
       class:active={$currentView === 'theway'} 
@@ -133,9 +126,7 @@
       {:else if $currentView === 'guidance'}
         <ScriptureGuide />
       {:else if $currentView === 'community'}
-        <CommunityFeed />
-      {:else if $currentView === 'fellowship'}
-        <TheFellowship />
+        <CommunityWall />
       {/if}
     </div>
   {/if}
