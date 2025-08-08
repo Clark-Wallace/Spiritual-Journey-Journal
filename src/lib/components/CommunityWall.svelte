@@ -2,11 +2,16 @@
   import { onMount } from 'svelte';
   import { supabase } from '../supabase';
   import { authStore } from '../stores/auth';
+  import { currentView } from '../stores';
   
   let wallNotes: any[] = [];
   let loading = true;
   let selectedNote: any = null;
   let showNoteDetail = false;
+  
+  function exitWall() {
+    currentView.set('home');
+  }
   
   // Different note colors for variety
   const noteColors = [
@@ -166,9 +171,12 @@
   }
 </script>
 
-<div class="wall-container">
+<div class="wall-container fullscreen">
   <div class="wall-header">
-    <h1>🏛️ Community Prayer Wall</h1>
+    <button class="exit-wall-btn" on:click={exitWall}>
+      ← Back
+    </button>
+    <h1>✨ Community Wall ✨</h1>
     <p class="wall-subtitle">Shared journal entries, prayers, and testimonies from the faithful</p>
   </div>
   
@@ -297,6 +305,52 @@
     padding: 1rem;
   }
   
+  .wall-container.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    min-height: 100vh;
+    width: 100vw;
+    z-index: 999;
+    background: linear-gradient(180deg, var(--bg-dark) 0%, var(--bg-dark-secondary) 100%);
+    overflow-y: auto;
+    padding: 0;
+  }
+  
+  .fullscreen .wall-header {
+    text-align: center;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 50%, transparent 100%);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+  
+  .exit-wall-btn {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    padding: 0.5rem 1rem;
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid var(--border-gold);
+    color: var(--text-divine);
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s;
+    z-index: 101;
+  }
+  
+  .exit-wall-btn:hover {
+    background: rgba(255, 215, 0, 0.2);
+    transform: translateX(-5px);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+  }
+  
   .wall-header {
     text-align: center;
     margin-bottom: 2rem;
@@ -328,6 +382,14 @@
     overflow: hidden;
   }
   
+  .fullscreen .bulletin-board {
+    border-radius: 0;
+    border: none;
+    min-height: 100vh;
+    padding: 1rem;
+    margin: 0;
+  }
+  
   .wood-texture {
     position: absolute;
     top: 0;
@@ -351,6 +413,14 @@
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 1.5rem;
     position: relative;
+  }
+  
+  .fullscreen .notes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 2rem;
+    padding: 1rem;
+    max-width: 1800px;
+    margin: 0 auto;
   }
   
   .wall-note {

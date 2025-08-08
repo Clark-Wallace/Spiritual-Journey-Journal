@@ -89,7 +89,7 @@
       class:active={$currentView === 'community'} 
       on:click={() => currentView.set('community')}
     >
-      📌 Prayer Wall
+      📌 Community Wall
     </button>
     <button 
       class:active={$currentView === 'fellowship'} 
@@ -107,6 +107,8 @@
   
   {#if $currentView === 'theway'}
     <TheWay />
+  {:else if $currentView === 'community'}
+    <CommunityWall />
   {:else}
     <div class="content">
       {#if $currentView === 'home'}
@@ -132,8 +134,6 @@
         <JournalList />
       {:else if $currentView === 'guidance'}
         <ScriptureGuide />
-      {:else if $currentView === 'community'}
-        <CommunityWall />
       {:else if $currentView === 'fellowship'}
         <TheFellowship />
       {/if}
