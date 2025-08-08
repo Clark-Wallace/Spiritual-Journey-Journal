@@ -214,10 +214,6 @@
     return '';
   }
   
-  function getOnlineCount() {
-    // In a real app, this would come from presence tracking
-    return Math.floor(Math.random() * 20) + 5;
-  }
 </script>
 
 <div class="prayer-room-container">
@@ -231,10 +227,6 @@
   <div class="sanctuary-header">
     <h1 class="sanctuary-title">✝ COMMUNITY PRAYER WALL ✝</h1>
     <p class="sanctuary-verse">"Bear one another's burdens, and so fulfill the law of Christ" - Galatians 6:2</p>
-    <div class="souls-present">
-      <div class="soul-indicator"></div>
-      <span>{getOnlineCount()} souls present</span>
-    </div>
   </div>
   
   <!-- Filter Pills -->
@@ -437,34 +429,6 @@
     font-style: italic;
   }
   
-  /* Online souls indicator */
-  .souls-present {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background: rgba(255, 223, 186, 0.1);
-    border: 1px solid rgba(255, 223, 186, 0.3);
-    padding: 8px 15px;
-    border-radius: 20px;
-    color: #ffd700;
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  
-  .soul-indicator {
-    width: 8px;
-    height: 8px;
-    background: #4caf50;
-    border-radius: 50%;
-    animation: pulse 2s infinite;
-  }
-  
-  @keyframes pulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.2); opacity: 0.7; }
-  }
   
   /* Filter Section */
   .filter-section {
@@ -798,12 +762,6 @@
   @media (max-width: 768px) {
     .sanctuary-title {
       font-size: 20px;
-    }
-    
-    .souls-present {
-      position: static;
-      margin-top: 10px;
-      display: inline-flex;
     }
     
     .prayer-wall {
