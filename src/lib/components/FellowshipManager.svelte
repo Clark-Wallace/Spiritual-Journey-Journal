@@ -12,21 +12,57 @@
   let searchResults: any[] = [];
   let searching = false;
   let activeTab: 'requests' | 'fellowship' = 'requests';
+  let requestSubscription: any;
   
   onMount(() => {
     if (show) {
       loadFellowships();
       loadRequests();
+      setupRequestSubscription();
     }
+    
+    return () => {
+      if (requestSubscription) {
+        supabase.removeChannel(requestSubscription);
+      }
+    };
   });
   
   $: if (show) {
     loadFellowships();
     loadRequests();
+    setupRequestSubscription();
     // Default to requests tab if there are any
     if (incomingRequests.length > 0) {
       activeTab = 'requests';
     }
+  }
+  
+  async function setupRequestSubscription() {
+    const user = await authStore.getUser();
+    if (!user) return;
+    
+    // Clean up existing subscription
+    if (requestSubscription) {
+      supabase.removeChannel(requestSubscription);
+    }
+    
+    // Subscribe to changes in fellowship_requests
+    requestSubscription = supabase
+      .channel('fellowship-requests')
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'fellowship_requests',
+          filter: `to_user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Fellowship request change:', payload);
+          loadRequests();
+        }
+      )
+      .subscribe();
   }
   
   async function loadFellowships() {
@@ -73,7 +109,34 @@
     const { data, error } = await supabase
       .rpc('get_fellowship_requests', { p_user_id: user.id });
     
-    if (!error && data) {
+    if (error) {
+      console.error('Error loading requests via RPC:', error);
+      // Fallback: try direct query
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('fellowship_requests')
+        .select(`
+          *,
+          from_profile:user_profiles!fellowship_requests_from_user_id_fkey(display_name),
+          to_profile:user_profiles!fellowship_requests_to_user_id_fkey(display_name)
+        `)
+        .eq('to_user_id', user.id)
+        .eq('status', 'pending');
+      
+      if (!fallbackError && fallbackData) {
+        console.log('Loaded requests via fallback:', fallbackData);
+        incomingRequests = fallbackData.map(req => ({
+          request_id: req.id,
+          from_user_id: req.from_user_id,
+          from_user_name: req.from_profile?.display_name || 'Unknown',
+          to_user_id: req.to_user_id,
+          to_user_name: req.to_profile?.display_name || 'Unknown',
+          status: req.status,
+          created_at: req.created_at,
+          direction: 'received'
+        }));
+      }
+    } else if (data) {
+      console.log('Loaded requests via RPC:', data);
       incomingRequests = data.filter((req: any) => req.direction === 'received');
     }
   }

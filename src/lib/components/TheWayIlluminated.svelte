@@ -259,14 +259,22 @@
   }
   
   async function loadOnlineUsers() {
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    // Only show users active in the last 2 minutes
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    
+    // Also clean up really old presence records
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    await supabase
+      .from('user_presence')
+      .delete()
+      .lt('last_seen', oneHourAgo);
     
     // Only load users in the current room
     const { data, error } = await supabase
       .from('user_presence')
       .select('*')
       .eq('current_room', currentRoom.id)
-      .gte('last_seen', fiveMinutesAgo)
+      .gte('last_seen', twoMinutesAgo)
       .order('last_seen', { ascending: false });
     
     if (!error) {
