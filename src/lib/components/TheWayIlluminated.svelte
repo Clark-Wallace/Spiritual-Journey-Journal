@@ -5,6 +5,7 @@
   import { currentView } from '../stores';
   import VoiceRecorder from './VoiceRecorder.svelte';
   import FellowshipManager from './FellowshipManager.svelte';
+  import FellowshipDebug from './FellowshipDebug.svelte';
   
   let messages: any[] = [];
   let onlineUsers: any[] = [];
@@ -17,6 +18,7 @@
   let requestSubscription: any;
   let isMobile = false;
   let showFellowshipManager = false;
+  let showDebug = false; // Toggle with Ctrl+Shift+D
   let fellowships: Set<string> = new Set();
   let pendingRequests: Set<string> = new Set();
   let incomingRequests: Set<string> = new Set();
@@ -51,6 +53,13 @@
     isMobile = window.innerWidth <= 768;
     window.addEventListener('resize', () => {
       isMobile = window.innerWidth <= 768;
+    });
+    
+    // Debug mode toggle
+    window.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+        showDebug = !showDebug;
+      }
     });
     
     // Clean up presence when user leaves the page
@@ -1080,6 +1089,10 @@
 </div>
 
 <FellowshipManager bind:show={showFellowshipManager} />
+
+{#if showDebug}
+  <FellowshipDebug />
+{/if}
 
 <style>
   .sanctuary-container {
