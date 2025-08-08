@@ -144,27 +144,12 @@
   }
   
   function processPost(post: any) {
-    // Same processing logic as in loadPosts
-    const reactionGroups = {};
-    const userReactions = [];
-    
-    if (post.reactions) {
-      post.reactions.forEach(r => {
-        if (!reactionGroups[r.reaction]) {
-          reactionGroups[r.reaction] = { reaction: r.reaction, count: 0 };
-        }
-        reactionGroups[r.reaction].count++;
-        
-        if (r.user_id === $authStore?.user?.id) {
-          userReactions.push(r.reaction);
-        }
-      });
-    }
-    
+    // Process post without reactions table for now
+    // Reactions can be loaded separately if needed
     return {
       ...post,
-      reactions: Object.values(reactionGroups),
-      user_reactions: userReactions
+      reactions: [],
+      user_reactions: []
     };
   }
 
@@ -178,23 +163,11 @@
       .from('community_posts')
       .select(`
         *,
-        reactions!left (
-          reaction,
-          count,
-          user_id
-        ),
         encouragements (
           id,
           message,
           user_name,
           created_at
-        ),
-        prayer_wall (
-          id,
-          category,
-          is_urgent,
-          is_answered,
-          prayer_warriors (count)
         )
       `)
       .order('created_at', { ascending: false });
@@ -213,30 +186,13 @@
     if (error) {
       console.error('Error loading posts:', error);
     } else {
-      // Process posts to group reactions by type
+      // Process posts - reactions will be loaded separately if needed
       const user = await authStore.getUser();
       posts = (data || []).map(post => {
-        // Group reactions by type and count them
-        const reactionGroups = {};
-        const userReactions = [];
-        
-        if (post.reactions) {
-          post.reactions.forEach(r => {
-            if (!reactionGroups[r.reaction]) {
-              reactionGroups[r.reaction] = { reaction: r.reaction, count: 0 };
-            }
-            reactionGroups[r.reaction].count++;
-            
-            if (r.user_id === user?.id) {
-              userReactions.push(r.reaction);
-            }
-          });
-        }
-        
         return {
           ...post,
-          reactions: Object.values(reactionGroups),
-          user_reactions: userReactions
+          reactions: [],
+          user_reactions: []
         };
       });
       
