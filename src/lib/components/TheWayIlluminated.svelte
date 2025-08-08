@@ -576,6 +576,9 @@
           <div class="soul-avatar">
             {getInitials(user.user_name || 'Anonymous')}
             <div class="presence-aura aura-{user.status || 'online'}"></div>
+            {#if fellowships.has(user.user_id)}
+              <span class="sidebar-fellowship-indicator" title="In your fellowship">👤</span>
+            {/if}
           </div>
           <div class="soul-details">
             <div class="soul-name">{user.user_name || 'Anonymous Soul'}</div>
@@ -583,6 +586,19 @@
               {statusConfig[user.status || 'online'].icon} {statusConfig[user.status || 'online'].label}
             </div>
           </div>
+          {#if user.user_id !== $authStore?.id}
+            <button 
+              class="sidebar-fellowship-btn"
+              on:click={() => toggleFellowship(user.user_id, user.user_name)}
+              title={fellowships.has(user.user_id) ? 'Remove from fellowship' : 'Add to fellowship'}
+            >
+              {#if fellowships.has(user.user_id)}
+                <span>👥</span>
+              {:else}
+                <span>+</span>
+              {/if}
+            </button>
+          {/if}
         </div>
       {/each}
       
@@ -677,18 +693,6 @@
                 <span class="message-timestamp">{formatTime(message.created_at)}</span>
                 {#if message.user_id === $authStore?.id}
                   <button class="delete-whisper" on:click={() => deleteMessage(message.id)}>×</button>
-                {:else}
-                  <button 
-                    class="fellowship-toggle-btn"
-                    on:click={() => toggleFellowship(message.user_id, message.user_name)}
-                    title={fellowships.has(message.user_id) ? 'Remove from fellowship' : 'Add to fellowship'}
-                  >
-                    {#if fellowships.has(message.user_id)}
-                      <span class="in-fellowship">👥</span>
-                    {:else}
-                      <span class="add-fellowship">+</span>
-                    {/if}
-                  </button>
                 {/if}
               </div>
               <div class="scroll-text" class:prayer-illumination={message.is_prayer_request}>
@@ -963,6 +967,46 @@
     margin-right: 12px;
     position: relative;
     box-shadow: 0 0 20px rgba(138, 43, 226, 0.3);
+  }
+  
+  .sidebar-fellowship-indicator {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    font-size: 0.7rem;
+    background: var(--bg-dark);
+    border-radius: 50%;
+    padding: 1px;
+    border: 1px solid var(--border-gold);
+  }
+  
+  .sidebar-fellowship-btn {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: rgba(255, 215, 0, 0.15);
+    border: 1px solid var(--border-gold);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+    color: var(--text-divine);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+  }
+  
+  .sidebar-fellowship-btn:hover {
+    background: rgba(255, 215, 0, 0.3);
+    transform: scale(1.1);
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+  }
+  
+  .sidebar-fellowship-btn span {
+    line-height: 1;
   }
   
   .presence-aura {
@@ -1381,38 +1425,6 @@
   .delete-whisper:hover {
     color: #f44336;
     opacity: 1;
-  }
-  
-  .fellowship-toggle-btn {
-    margin-left: auto;
-    background: rgba(255, 215, 0, 0.1);
-    border: 1px solid var(--border-gold);
-    border-radius: 12px;
-    padding: 2px 8px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: all 0.2s;
-    color: var(--text-divine);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 28px;
-    height: 24px;
-  }
-  
-  .fellowship-toggle-btn:hover {
-    background: rgba(255, 215, 0, 0.2);
-    transform: scale(1.1);
-    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
-  }
-  
-  .fellowship-toggle-btn .add-fellowship {
-    font-weight: bold;
-    font-size: 16px;
-  }
-  
-  .fellowship-toggle-btn .in-fellowship {
-    font-size: 14px;
   }
   
   .scroll-text {
