@@ -10,6 +10,7 @@
   import StreakDisplay from './lib/components/StreakDisplay.svelte';
   import ScriptureGuide from './lib/components/ScriptureGuide.svelte';
   import CommunityWall from './lib/components/CommunityWall.svelte';
+  import TheFellowship from './lib/components/TheFellowship.svelte';
   import TheWay from './lib/components/TheWayIlluminated.svelte';
   
   onMount(async () => {
@@ -91,6 +92,12 @@
       📌 Prayer Wall
     </button>
     <button 
+      class:active={$currentView === 'fellowship'} 
+      on:click={() => currentView.set('fellowship')}
+    >
+      👥 Fellowship
+    </button>
+    <button 
       class:active={$currentView === 'theway'} 
       on:click={() => currentView.set('theway')}
     >
@@ -127,6 +134,8 @@
         <ScriptureGuide />
       {:else if $currentView === 'community'}
         <CommunityWall />
+      {:else if $currentView === 'fellowship'}
+        <TheFellowship />
       {/if}
     </div>
   {/if}
