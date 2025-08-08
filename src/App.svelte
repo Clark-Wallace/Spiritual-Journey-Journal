@@ -73,10 +73,10 @@
       🏠 Home
     </button>
     <button 
-      class:active={$currentView === 'community'} 
-      on:click={() => currentView.set('community')}
+      class:active={$currentView === 'guidance'} 
+      on:click={() => currentView.set('guidance')}
     >
-      🌍 Community
+      ✨ Guidance
     </button>
     <button 
       class:active={$currentView === 'journal'} 
@@ -85,10 +85,10 @@
       📔 Journal
     </button>
     <button 
-      class:active={$currentView === 'guidance'} 
-      on:click={() => currentView.set('guidance')}
+      class:active={$currentView === 'community'} 
+      on:click={() => currentView.set('community')}
     >
-      ✨ Guidance
+      🌍 Community
     </button>
     <button 
       class:active={$currentView === 'theway'} 
