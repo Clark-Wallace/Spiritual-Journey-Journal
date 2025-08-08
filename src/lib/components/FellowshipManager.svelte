@@ -89,33 +89,13 @@
       });
     
     if (error) {
-      console.error('Error accepting via RPC:', error);
-      // Fallback: manually update request and create fellowships
-      
-      // Update request status
-      const { error: updateError } = await supabase
-        .from('fellowship_requests')
-        .update({ 
-          status: 'accepted',
-          responded_at: new Date().toISOString()
-        })
-        .eq('id', requestId)
-        .eq('to_user_id', user.id);
-      
-      if (!updateError) {
-        // Create our side of the fellowship (we can only insert where we are user_id)
-        const { error: fellowshipError } = await supabase
-          .from('fellowships')
-          .insert({ user_id: user.id, fellow_id: fromUserId });
-        
-        if (!fellowshipError) {
-          console.log('Accepted via fallback - created our side of fellowship');
-          // Note: The other user will need to create their side when they load
-          // Or we need a database trigger to handle mutual fellowship creation
-        } else {
-          console.error('Error creating fellowship:', fellowshipError);
-        }
-      }
+      console.error('Error accepting request:', error);
+      alert('Failed to accept fellowship request. Please try again.');
+      return;
+    }
+    
+    if (data?.success) {
+      console.log('Fellowship request accepted successfully');
     }
     
     // Reload data
@@ -134,16 +114,13 @@
       });
     
     if (error) {
-      console.error('Error declining via RPC:', error);
-      // Fallback: manually update request status
-      await supabase
-        .from('fellowship_requests')
-        .update({ 
-          status: 'declined',
-          responded_at: new Date().toISOString()
-        })
-        .eq('id', requestId)
-        .eq('to_user_id', user.id);
+      console.error('Error declining request:', error);
+      alert('Failed to decline fellowship request. Please try again.');
+      return;
+    }
+    
+    if (data?.success) {
+      console.log('Fellowship request declined');
     }
     
     await loadRequests();
