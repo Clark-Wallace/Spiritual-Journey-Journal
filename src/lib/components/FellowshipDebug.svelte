@@ -32,6 +32,15 @@
       testResults.directQuery = { success: !error, data, error };
       allRequests = data || [];
       console.log('Direct query results:', data, error);
+      
+      // Also check specifically for pending requests
+      const { data: pendingData } = await supabase
+        .from('fellowship_requests')
+        .select('*')
+        .eq('to_user_id', user.id)
+        .eq('status', 'pending');
+      
+      console.log('Pending requests for this user:', pendingData);
     } catch (e) {
       testResults.directQuery = { success: false, error: e };
     }

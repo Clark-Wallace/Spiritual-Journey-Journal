@@ -313,11 +313,19 @@
       }
     } else if (data) {
       console.log('Loaded fellowship requests:', data);
+      console.log('Processing requests for user:', user.id);
       pendingRequests.clear();
       incomingRequests.clear();
       requestCount = 0;
       
       data.forEach((req: any) => {
+        console.log('Processing request:', {
+          direction: req.direction,
+          from: req.from_user_id,
+          to: req.to_user_id,
+          status: req.status
+        });
+        
         if (req.direction === 'sent') {
           pendingRequests.add(req.to_user_id);
         } else if (req.direction === 'received') {
@@ -330,7 +338,7 @@
       incomingRequests = new Set(incomingRequests);
     }
     
-    console.log('Request count:', requestCount, 'Incoming:', incomingRequests.size);
+    console.log('Final state - Request count:', requestCount, 'Incoming:', incomingRequests.size, 'Pending:', pendingRequests.size);
   }
   
   async function loadOnlineUsers() {
@@ -811,13 +819,32 @@
       <button 
         class="fellowship-btn {requestCount > 0 ? 'has-requests' : ''}" 
         on:click={() => showFellowshipManager = true} 
-        title="Manage Fellowship"
+        title="Manage Fellowship | Requests: {requestCount} | Incoming: {incomingRequests.size}"
       >
         👥 Fellowship
         {#if requestCount > 0}
           <span class="request-badge">{requestCount}</span>
         {/if}
       </button>
+      <!-- Debug info -->
+      {#if showDebug}
+        <div style="position: absolute; top: 40px; right: 70px; background: black; color: white; padding: 5px; font-size: 10px; z-index: 9999;">
+          Count: {requestCount}<br>
+          Incoming: {incomingRequests.size}<br>
+          Pending: {pendingRequests.size}<br>
+          Fellows: {fellowships.size}<br>
+          <button 
+            style="margin-top: 5px; font-size: 10px; padding: 2px 5px;"
+            on:click={async () => {
+              await loadFellowshipRequests();
+              await loadFellowships();
+              console.log('Manually refreshed - Count:', requestCount);
+            }}
+          >
+            🔄 Refresh
+          </button>
+        </div>
+      {/if}
       <button class="exit-sanctuary" on:click={exitChat} title="Return to main app">
         ← Exit
       </button>
