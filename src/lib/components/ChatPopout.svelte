@@ -23,8 +23,11 @@
   // Window state
   let isMinimized = false;
   let isDragging = false;
+  let isResizing = false;
   let dragStart = { x: 0, y: 0 };
   let position = { ...initialPosition };
+  let size = { width: 350, height: 450 };
+  let resizeStart = { width: 350, height: 450, x: 0, y: 0 };
   let windowElement: HTMLDivElement;
   
   onMount(() => {
@@ -238,25 +241,48 @@
   
   // Window management
   function startDrag(e: MouseEvent) {
-    if (isMinimized) return;
+    if (isMinimized || isResizing) return;
     isDragging = true;
     dragStart = {
       x: e.clientX - position.x,
       y: e.clientY - position.y
     };
     e.preventDefault();
+    // Prevent text selection while dragging
+    document.body.style.userSelect = 'none';
   }
   
-  function onDrag(e: MouseEvent) {
-    if (!isDragging) return;
-    position = {
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y
-    };
+  function onMouseMove(e: MouseEvent) {
+    if (isDragging) {
+      position = {
+        x: Math.max(0, Math.min(window.innerWidth - size.width, e.clientX - dragStart.x)),
+        y: Math.max(0, Math.min(window.innerHeight - 50, e.clientY - dragStart.y))
+      };
+    } else if (isResizing) {
+      size = {
+        width: Math.max(250, Math.min(800, resizeStart.width + (e.clientX - resizeStart.x))),
+        height: Math.max(300, Math.min(700, resizeStart.height + (e.clientY - resizeStart.y)))
+      };
+    }
   }
   
-  function stopDrag() {
+  function onMouseUp() {
     isDragging = false;
+    isResizing = false;
+    document.body.style.userSelect = '';
+  }
+  
+  function startResize(e: MouseEvent) {
+    isResizing = true;
+    resizeStart = {
+      width: size.width,
+      height: size.height,
+      x: e.clientX,
+      y: e.clientY
+    };
+    e.preventDefault();
+    e.stopPropagation();
+    document.body.style.userSelect = 'none';
   }
   
   function toggleMinimize() {
@@ -286,15 +312,16 @@
 </script>
 
 <svelte:window 
-  on:mousemove={onDrag}
-  on:mouseup={stopDrag}
+  on:mousemove={onMouseMove}
+  on:mouseup={onMouseUp}
 />
 
 <div 
   class="chat-popout"
   class:minimized={isMinimized}
   class:dragging={isDragging}
-  style="left: {position.x}px; top: {position.y}px; z-index: {zIndex}"
+  class:resizing={isResizing}
+  style="left: {position.x}px; top: {position.y}px; z-index: {zIndex}; width: {size.width}px; height: {isMinimized ? 'auto' : size.height + 'px'}"
   bind:this={windowElement}
   on:mousedown={bringToFront}
   role="dialog"
@@ -366,13 +393,18 @@
         </button>
       </div>
     </div>
+    <!-- Resize handle -->
+    <div 
+      class="resize-handle"
+      on:mousedown={startResize}
+      title="Drag to resize"
+    ></div>
   {/if}
 </div>
 
 <style>
   .chat-popout {
     position: fixed;
-    width: 350px;
     background: linear-gradient(135deg, #1a1a2e, #0f0f1e);
     border: 2px solid var(--border-gold);
     border-radius: 12px;
@@ -381,15 +413,22 @@
     display: flex;
     flex-direction: column;
     transition: transform 0.3s ease;
+    min-width: 250px;
+    min-height: 300px;
   }
   
   .chat-popout.minimized {
-    height: auto;
+    height: auto !important;
   }
   
-  .chat-popout.dragging {
+  .chat-popout.dragging, .chat-popout.resizing {
     transition: none;
     opacity: 0.9;
+    cursor: move;
+  }
+  
+  .chat-popout.resizing {
+    cursor: nwse-resize;
   }
   
   .chat-popout.flash {
@@ -486,7 +525,25 @@
   .chat-body {
     display: flex;
     flex-direction: column;
-    height: 400px;
+    flex: 1;
+    min-height: 0;
+  }
+  
+  .resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    cursor: nwse-resize;
+    background: linear-gradient(135deg, transparent 50%, var(--border-gold) 50%);
+    border-radius: 0 0 10px 0;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+  }
+  
+  .resize-handle:hover {
+    opacity: 1;
   }
   
   .messages-container {
@@ -601,16 +658,17 @@
   /* Mobile responsive */
   @media (max-width: 768px) {
     .chat-popout {
-      width: 90vw;
+      width: 90vw !important;
       max-width: 350px;
+      height: 70vh !important;
       position: fixed;
       left: 50% !important;
+      top: 15vh !important;
       transform: translateX(-50%);
     }
     
-    .chat-body {
-      height: 60vh;
-      max-height: 400px;
+    .resize-handle {
+      display: none; /* Hide resize on mobile */
     }
   }
   
