@@ -715,12 +715,43 @@
     
     console.log('Sending chat request to:', userName, userId);
     
-    const { data, error } = await supabase
+    // Try RPC function first, fallback to direct insert
+    let { data, error } = await supabase
       .rpc('send_chat_request', {
         p_from_user_id: user.id,
         p_to_user_id: userId,
         p_from_user_name: $userInfo?.name || user.email?.split('@')[0] || 'Anonymous'
       });
+    
+    // If RPC function doesn't exist, use direct approach
+    if (error && (error.message?.includes('function') || error?.code === '42883')) {
+      console.log('Chat request RPC not found, using direct approach');
+      
+      // Check if chat_requests table exists by trying to insert
+      const directResult = await supabase
+        .from('chat_requests')
+        .insert({
+          from_user_id: user.id,
+          to_user_id: userId,
+          from_user_name: $userInfo?.name || user.email?.split('@')[0] || 'Anonymous'
+        })
+        .select()
+        .single();
+      
+      if (!directResult.error) {
+        showTemporaryMessage(`Chat request sent to ${userName}`);
+        return; // Success with direct insert
+      } else if (directResult.error.message?.includes('does not exist')) {
+        // Table doesn't exist, open chat directly (fallback to old behavior)
+        console.log('Chat requests table not found, opening chat directly');
+        dmRecipientId = userId;
+        dmRecipientName = userName;
+        showPrivateMessages = true;
+        return;
+      } else {
+        error = directResult.error;
+      }
+    }
     
     if (!error && data && data[0]) {
       const result = data[0];
@@ -731,7 +762,11 @@
       }
     } else {
       console.error('Error sending chat request:', error);
-      showTemporaryMessage(`Failed to send chat request`);
+      showTemporaryMessage(`Failed to send chat request - opening chat directly`);
+      // Fallback to direct chat opening
+      dmRecipientId = userId;
+      dmRecipientName = userName;
+      showPrivateMessages = true;
     }
   }
   

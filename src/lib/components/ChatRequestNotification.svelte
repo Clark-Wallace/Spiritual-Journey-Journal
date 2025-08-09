@@ -32,10 +32,35 @@
     const user = await getCurrentUser();
     if (!user) return;
     
-    const { data, error } = await supabase
+    // Try RPC function first, fallback to direct query
+    let { data, error } = await supabase
       .rpc('get_pending_chat_requests', { p_user_id: user.id });
     
-    if (!error && data) {
+    // If RPC function doesn't exist, use direct query
+    if (error && (error.message?.includes('function') || error?.code === '42883')) {
+      console.log('Chat requests RPC not found, using direct query');
+      
+      const directResult = await supabase
+        .from('chat_requests')
+        .select('id, from_user_id, from_user_name, created_at, expires_at')
+        .eq('to_user_id', user.id)
+        .eq('status', 'pending')
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false });
+      
+      if (!directResult.error && directResult.data) {
+        pendingRequests = directResult.data.map(req => ({
+          request_id: req.id,
+          from_user_id: req.from_user_id,
+          from_user_name: req.from_user_name,
+          created_at: req.created_at,
+          expires_at: req.expires_at
+        }));
+      } else if (directResult.error && !directResult.error.message?.includes('does not exist')) {
+        console.error('Error loading chat requests:', directResult.error);
+      }
+      // If table doesn't exist, just silently fail (no requests to show)
+    } else if (!error && data) {
       pendingRequests = data;
     } else if (error) {
       console.error('Error loading chat requests:', error);
@@ -77,14 +102,46 @@
     const user = await getCurrentUser();
     if (!user) return;
     
-    const { data, error } = await supabase
+    // Try RPC function first, fallback to direct update
+    let { data, error } = await supabase
       .rpc('respond_to_chat_request', {
         p_request_id: requestId,
         p_user_id: user.id,
         p_response: response
       });
     
-    if (!error && data && data[0]) {
+    // If RPC function doesn't exist, use direct update
+    if (error && (error.message?.includes('function') || error?.code === '42883')) {
+      console.log('RPC function not found, using direct update');
+      
+      const updateResult = await supabase
+        .from('chat_requests')
+        .update({ 
+          status: response, 
+          responded_at: new Date().toISOString() 
+        })
+        .eq('id', requestId)
+        .eq('to_user_id', user.id)
+        .select('from_user_id')
+        .single();
+      
+      if (!updateResult.error && updateResult.data) {
+        // Handle the response
+        if (response === 'accepted') {
+          const request = pendingRequests.find(r => r.request_id === requestId);
+          if (request) {
+            onAcceptChat(request.from_user_id, request.from_user_name);
+          }
+        }
+        pendingRequests = pendingRequests.filter(r => r.request_id !== requestId);
+      } else if (updateResult.error && !updateResult.error.message?.includes('does not exist')) {
+        console.error('Error responding to chat request:', updateResult.error);
+      }
+      // If table doesn't exist, just remove from local state
+      else {
+        pendingRequests = pendingRequests.filter(r => r.request_id !== requestId);
+      }
+    } else if (!error && data && data[0]) {
       const result = data[0];
       if (result.success) {
         if (response === 'accepted') {
@@ -97,6 +154,8 @@
         // Remove from pending requests
         pendingRequests = pendingRequests.filter(r => r.request_id !== requestId);
       }
+    } else if (error) {
+      console.error('Error responding to chat request:', error);
     }
   }
   
