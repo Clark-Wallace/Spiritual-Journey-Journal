@@ -506,14 +506,22 @@
     if (messageIndex === -1) return;
     
     if (eventType === 'INSERT') {
-      // Add reaction
+      // Add reaction (check for duplicates first)
       if (!messages[messageIndex].chat_reactions) {
         messages[messageIndex].chat_reactions = [];
       }
-      messages[messageIndex].chat_reactions.push({
-        reaction: newData.reaction,
-        user_id: newData.user_id
-      });
+      
+      // Only add if it doesn't already exist (prevents duplicates from optimistic updates)
+      const alreadyExists = messages[messageIndex].chat_reactions.some(
+        r => r.reaction === newData.reaction && r.user_id === newData.user_id
+      );
+      
+      if (!alreadyExists) {
+        messages[messageIndex].chat_reactions.push({
+          reaction: newData.reaction,
+          user_id: newData.user_id
+        });
+      }
     } else if (eventType === 'DELETE') {
       // Remove reaction
       if (messages[messageIndex].chat_reactions) {
@@ -547,6 +555,12 @@
       // Remove the reaction if it exists
       console.log('Removing reaction:', { messageId, reaction, userId: user.id });
       
+      // Optimistic update - remove immediately for better UX
+      messages[messageIndex].chat_reactions = message.chat_reactions.filter(
+        r => !(r.reaction === reaction && r.user_id === user.id)
+      );
+      messages = messages; // Trigger Svelte reactivity
+      
       const { error } = await supabase
         .from('chat_reactions')
         .delete()
@@ -556,15 +570,40 @@
       
       if (error) {
         console.error('Error removing reaction:', error);
+        // Revert optimistic update on error
+        if (!messages[messageIndex].chat_reactions) {
+          messages[messageIndex].chat_reactions = [];
+        }
+        messages[messageIndex].chat_reactions.push({
+          reaction,
+          user_id: user.id
+        });
+        messages = messages;
         return;
       }
       
-      // Don't update locally - let the real-time subscription handle it
-      // This prevents duplicate removals and sync issues
       console.log('Reaction removed successfully');
     } else {
       // Add the reaction if it doesn't exist
       console.log('Adding reaction:', { messageId, reaction, userId: user.id });
+      
+      // Optimistic update - add immediately for better UX
+      if (!messages[messageIndex].chat_reactions) {
+        messages[messageIndex].chat_reactions = [];
+      }
+      
+      // Check if it's already there (from real-time) to prevent duplicates
+      const alreadyExists = messages[messageIndex].chat_reactions.some(
+        r => r.reaction === reaction && r.user_id === user.id
+      );
+      
+      if (!alreadyExists) {
+        messages[messageIndex].chat_reactions.push({
+          reaction,
+          user_id: user.id
+        });
+        messages = messages; // Trigger Svelte reactivity
+      }
       
       const { data, error } = await supabase
         .from('chat_reactions')
@@ -578,11 +617,14 @@
       
       if (error) {
         console.error('Error adding reaction:', error);
+        // Revert optimistic update on error
+        messages[messageIndex].chat_reactions = messages[messageIndex].chat_reactions.filter(
+          r => !(r.reaction === reaction && r.user_id === user.id)
+        );
+        messages = messages;
         return;
       }
       
-      // Don't update locally - let the real-time subscription handle it
-      // This prevents duplicate reactions
       console.log('Reaction added successfully:', data);
     }
   }
