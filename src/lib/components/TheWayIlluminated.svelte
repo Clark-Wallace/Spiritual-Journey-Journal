@@ -709,9 +709,11 @@
   function openPrivateMessage(userId: string, userName: string) {
     if (userId === $authStore?.id) return; // Can't DM yourself
     
+    console.log('Opening private message with:', userName, userId);
     dmRecipientId = userId;
     dmRecipientName = userName;
     showPrivateMessages = true;
+    console.log('Modal state:', { showPrivateMessages, dmRecipientId, dmRecipientName });
   }
   
   async function exitChat() {

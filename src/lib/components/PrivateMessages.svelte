@@ -14,6 +14,7 @@
   let subscription: any;
   
   $: if (isOpen && recipientId) {
+    console.log('Private messages modal opened for:', recipientName, recipientId);
     loadMessages();
     setupRealtimeSubscription();
   }
@@ -91,12 +92,14 @@
     
     if (!error && data) {
       messages = data;
+      console.log('Messages loaded successfully:', data.length, 'messages');
       scrollToBottom();
     } else {
       console.error('Error loading messages:', error);
     }
     
     loading = false;
+    console.log('Loading complete, messages:', messages.length);
   }
   
   async function sendMessage() {
