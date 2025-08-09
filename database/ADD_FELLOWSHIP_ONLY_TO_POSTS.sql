@@ -32,7 +32,7 @@ AS $$
 BEGIN
   -- Check if user has any fellowships
   IF NOT EXISTS (
-    SELECT 1 FROM fellowships WHERE user_id = for_user_id
+    SELECT 1 FROM fellowships f WHERE f.user_id = for_user_id
   ) THEN
     -- Return only user's own fellowship posts if no fellowships
     RETURN QUERY
@@ -72,9 +72,9 @@ BEGIN
       AND (
         cp.user_id = for_user_id  -- User's own posts
         OR cp.user_id IN (         -- Fellows' posts
-          SELECT fellow_id 
-          FROM fellowships 
-          WHERE user_id = for_user_id
+          SELECT f.fellow_id 
+          FROM fellowships f
+          WHERE f.user_id = for_user_id
         )
       )
     ORDER BY cp.created_at DESC;
