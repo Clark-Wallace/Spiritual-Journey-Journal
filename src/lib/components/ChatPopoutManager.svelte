@@ -70,6 +70,11 @@
     openChat(fromUserId, fromUserName);
   }
   
+  function handleChatRequestAccepted(userId: string, userName: string) {
+    // When our chat request is accepted, open the chat window
+    openChat(userId, userName);
+  }
+  
   // Expose openChat method to parent
   onMount(() => {
     // Make openChat available globally if needed
@@ -80,7 +85,7 @@
 <!-- Chat request notifications -->
 <ChatRequestNotification 
   onAcceptChat={handleAcceptChat}
-  onChatRequestAccepted={null}
+  onChatRequestAccepted={handleChatRequestAccepted}
 />
 
 <!-- Render all chat windows -->
