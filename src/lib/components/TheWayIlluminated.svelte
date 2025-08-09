@@ -2445,19 +2445,20 @@
     
     .sanctuary-ceiling {
       position: relative;
-      padding: 60px 10px 20px 20px; /* Top padding for mobile buttons */
+      padding: 20px 140px 20px 20px; /* Right padding for mobile buttons */
       flex-shrink: 0; /* Prevent header from shrinking */
       height: auto;
     }
     
     .mobile-buttons {
       position: absolute;
-      top: 10px;
+      top: 50%;
       right: 10px;
+      transform: translateY(-50%);
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       gap: 8px;
-      align-items: flex-end;
+      align-items: center;
     }
     
     .mobile-users-btn {
