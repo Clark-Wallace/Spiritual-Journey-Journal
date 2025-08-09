@@ -777,6 +777,20 @@
     showPrivateMessages = true;
   }
   
+  // Handle when someone accepts our chat request
+  function handleChatRequestAccepted(userId: string, userName: string) {
+    // Look up the actual user name from our online users list
+    const user = onlineUsers.find(u => u.user_id === userId);
+    const actualUserName = user?.user_name || userName || 'User';
+    
+    console.log('Our chat request was accepted by:', actualUserName);
+    showTemporaryMessage(`${actualUserName} accepted your chat request`);
+    // Auto-open the chat for the sender
+    dmRecipientId = userId;
+    dmRecipientName = actualUserName;
+    showPrivateMessages = true;
+  }
+  
   function showTemporaryMessage(message: string) {
     // Create a temporary notification for the sender
     const notification = document.createElement('div');
@@ -1268,7 +1282,7 @@
   bind:recipientName={dmRecipientName}
 />
 
-<ChatRequestNotification onAcceptChat={acceptChatRequest} />
+<ChatRequestNotification onAcceptChat={acceptChatRequest} onChatRequestAccepted={handleChatRequestAccepted} />
 
 {#if showDebug}
   <FellowshipDebug />

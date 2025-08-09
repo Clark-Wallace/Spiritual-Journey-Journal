@@ -4,6 +4,7 @@
   import { authStore } from '../stores/auth';
   
   export let onAcceptChat: (fromUserId: string, fromUserName: string) => void;
+  export let onChatRequestAccepted: ((userId: string, userName: string) => void) | null = null;
   
   let pendingRequests: any[] = [];
   let subscription: any;
@@ -89,7 +90,18 @@
         filter: `from_user_id=eq.${user.id}`
       }, (payload) => {
         // Response to our request
-        if (payload.new.status === 'declined') {
+        if (payload.new.status === 'accepted') {
+          // Get the user info who accepted our request
+          const toUserId = payload.new.to_user_id;
+          // We need to get the actual name - for now use a generic name
+          // In a real app, this would need a user lookup
+          const toUserName = 'User'; // TODO: Look up actual user name
+          
+          // Notify the parent component to open chat
+          if (onChatRequestAccepted) {
+            onChatRequestAccepted(toUserId, toUserName);
+          }
+        } else if (payload.new.status === 'declined') {
           showTemporaryMessage(`${getRecipientName(payload.new.to_user_id)} is not available right now.`);
         } else if (payload.new.status === 'timeout') {
           showTemporaryMessage(`${getRecipientName(payload.new.to_user_id)} is busy.`);
@@ -160,7 +172,8 @@
   }
   
   function getRecipientName(userId: string): string {
-    // This would need to be enhanced to look up actual user names
+    // Try to find the user name from presence data (if available from parent)
+    // For now, return a generic name - this could be enhanced with a user lookup
     return 'User';
   }
   
