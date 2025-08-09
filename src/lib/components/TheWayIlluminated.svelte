@@ -1089,7 +1089,7 @@
   </div>
   
   <!-- Mobile Sidebar Overlay -->
-  {#if showMobileSidebar && isMobile}
+  {#if showMobileSidebar}
     <div class="mobile-sidebar-overlay" on:click={() => showMobileSidebar = false}>
       <div class="mobile-sidebar" on:click|stopPropagation>
         <div class="mobile-sidebar-header">
@@ -2439,20 +2439,25 @@
       display: block;
     }
     
+    .mobile-buttons {
+      display: flex;
+    }
+    
     .sanctuary-ceiling {
       position: relative;
-      padding-right: 140px; /* Make room for mobile buttons */
+      padding: 60px 10px 20px 20px; /* Top padding for mobile buttons */
       flex-shrink: 0; /* Prevent header from shrinking */
       height: auto;
     }
     
     .mobile-buttons {
       position: absolute;
-      top: 50%;
+      top: 10px;
       right: 10px;
-      transform: translateY(-50%);
       display: flex;
+      flex-direction: column;
       gap: 8px;
+      align-items: flex-end;
     }
     
     .mobile-users-btn {
