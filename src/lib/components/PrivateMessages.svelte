@@ -12,17 +12,28 @@
   let loading = false;
   let messagesContainer: HTMLDivElement;
   let subscription: any;
+  let presenceSubscription: any;
+  let otherUserPresent = true;
+  let presenceTimeoutId: any;
   
   $: if (isOpen && recipientId) {
     console.log('Private messages modal opened for:', recipientName, recipientId);
     loadMessages();
     setupRealtimeSubscription();
+    setupChatPresence();
   }
   
   onDestroy(() => {
     if (subscription) {
       subscription.unsubscribe();
     }
+    if (presenceSubscription) {
+      presenceSubscription.unsubscribe();
+    }
+    if (presenceTimeoutId) {
+      clearTimeout(presenceTimeoutId);
+    }
+    removeChatPresence();
   });
   
   async function loadMessages() {
@@ -183,6 +194,98 @@
       .eq('id', messageId);
   }
   
+  async function setupChatPresence() {
+    const user = await getCurrentUser();
+    if (!user || !recipientId) return;
+    
+    // Create a unique conversation ID (sorted user IDs to ensure consistency)
+    const conversationId = [user.id, recipientId].sort().join('-');
+    
+    // Update presence to show we're in this chat
+    await updateChatPresence(conversationId);
+    
+    // Set up subscription to monitor other user's presence
+    presenceSubscription = supabase
+      .channel(`chat-presence-${conversationId}`)
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceSubscription.presenceState();
+        const otherUserKey = Object.keys(state).find(key => key.includes(recipientId));
+        otherUserPresent = !!otherUserKey;
+        
+        if (!otherUserPresent && isOpen) {
+          showUserLeftNotification();
+        }
+      })
+      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        if (key.includes(recipientId)) {
+          otherUserPresent = true;
+        }
+      })
+      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+        if (key.includes(recipientId)) {
+          otherUserPresent = false;
+          if (isOpen) {
+            showUserLeftNotification();
+          }
+        }
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await presenceSubscription.track({
+            user_id: user.id,
+            conversation_id: conversationId,
+            online_at: new Date().toISOString(),
+          });
+        }
+      });
+  }
+  
+  async function updateChatPresence(conversationId: string) {
+    const user = await getCurrentUser();
+    if (!user) return;
+    
+    // Heartbeat to show we're still active
+    if (presenceSubscription) {
+      await presenceSubscription.track({
+        user_id: user.id,
+        conversation_id: conversationId,
+        online_at: new Date().toISOString(),
+      });
+    }
+    
+    // Schedule next heartbeat
+    presenceTimeoutId = setTimeout(() => {
+      if (isOpen && recipientId) {
+        updateChatPresence(conversationId);
+      }
+    }, 10000); // Update every 10 seconds
+  }
+  
+  async function removeChatPresence() {
+    if (presenceSubscription) {
+      await presenceSubscription.untrack();
+    }
+  }
+  
+  function showUserLeftNotification() {
+    // Add a system message to the chat
+    const systemMessage = {
+      message_id: `system-${Date.now()}`,
+      from_user_id: null,
+      from_user_name: 'System',
+      to_user_id: null,
+      to_user_name: '',
+      message: `${recipientName} has left the conversation`,
+      is_read: true,
+      created_at: new Date().toISOString(),
+      is_mine: false,
+      is_system: true
+    };
+    
+    messages = [...messages, systemMessage];
+    scrollToBottom();
+  }
+  
   function scrollToBottom() {
     setTimeout(() => {
       if (messagesContainer) {
@@ -192,13 +295,23 @@
   }
   
   function close() {
+    removeChatPresence();
     isOpen = false;
     recipientId = null;
     recipientName = '';
     messages = [];
+    otherUserPresent = true;
     if (subscription) {
       subscription.unsubscribe();
       subscription = null;
+    }
+    if (presenceSubscription) {
+      presenceSubscription.unsubscribe();
+      presenceSubscription = null;
+    }
+    if (presenceTimeoutId) {
+      clearTimeout(presenceTimeoutId);
+      presenceTimeoutId = null;
     }
   }
   
@@ -229,6 +342,10 @@
     <div class="dm-container" on:click|stopPropagation>
       <div class="dm-header">
         <h3>💬 Private Message with {recipientName}</h3>
+        <div class="chat-status">
+          <span class="presence-indicator {otherUserPresent ? 'online' : 'offline'}"></span>
+          <span class="status-text">{otherUserPresent ? 'Online' : 'Offline'}</span>
+        </div>
         <button class="close-btn" on:click={close}>✕</button>
       </div>
       
@@ -242,12 +359,19 @@
           </div>
         {:else}
           {#each messages as message}
-            <div class="dm-message {message.is_mine ? 'mine' : 'theirs'}">
-              <div class="message-bubble">
-                <div class="message-text">{message.message}</div>
-                <div class="message-time">{formatTime(message.created_at)}</div>
+            {#if message.is_system}
+              <div class="system-message">
+                <div class="system-text">{message.message}</div>
+                <div class="system-time">{formatTime(message.created_at)}</div>
               </div>
-            </div>
+            {:else}
+              <div class="dm-message {message.is_mine ? 'mine' : 'theirs'}">
+                <div class="message-bubble">
+                  <div class="message-text">{message.message}</div>
+                  <div class="message-time">{formatTime(message.created_at)}</div>
+                </div>
+              </div>
+            {/if}
           {/each}
         {/if}
       </div>
@@ -309,12 +433,67 @@
     justify-content: space-between;
     align-items: center;
     background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(138, 43, 226, 0.05));
+    gap: 1rem;
   }
   
   .dm-header h3 {
     margin: 0;
     color: var(--text-divine);
     font-size: 1.2rem;
+    flex: 1;
+  }
+  
+  .chat-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+  }
+  
+  .presence-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  
+  .presence-indicator.online {
+    background: #4caf50;
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+  }
+  
+  .presence-indicator.offline {
+    background: #757575;
+  }
+  
+  .status-text {
+    color: var(--text-scripture);
+    font-weight: 500;
+  }
+  
+  .system-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 1rem 0;
+  }
+  
+  .system-text {
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    color: var(--text-scripture);
+    padding: 0.5rem 1rem;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    font-style: italic;
+    text-align: center;
+  }
+  
+  .system-time {
+    font-size: 0.7rem;
+    color: var(--text-scripture);
+    opacity: 0.6;
+    margin-top: 0.25rem;
   }
   
   .close-btn {
