@@ -913,7 +913,15 @@
             </div>
           </div>
           {#if user.user_id !== $authStore?.id}
-            <button 
+            <div class="soul-actions">
+              <button 
+                class="sidebar-dm-btn"
+                on:click|stopPropagation={() => openPrivateMessage(user.user_id, user.user_name || 'Anonymous')}
+                title="Send private message"
+              >
+                💬
+              </button>
+              <button 
               class="sidebar-fellowship-btn {fellowships.has(user.user_id) ? 'active locked' : ''} {pendingRequests.has(user.user_id) ? 'pending' : ''} {incomingRequests.has(user.user_id) ? 'incoming' : ''}"
               on:click={() => toggleFellowship(user.user_id, user.user_name)}
               title={fellowships.has(user.user_id) ? '✓ In fellowship (manage in Fellowship Manager)' : 
@@ -931,6 +939,7 @@
                 <span>+</span>
               {/if}
             </button>
+            </div>
           {/if}
         </div>
       {/each}
@@ -1023,15 +1032,6 @@
             <div class="message-scroll">
               <div class="scroll-header">
                 <span class="messenger-name">{message.user_name || 'Anonymous Soul'}</span>
-                {#if message.user_id !== $authStore?.id}
-                  <button 
-                    class="dm-icon" 
-                    on:click={() => openPrivateMessage(message.user_id, message.user_name || 'Anonymous')}
-                    title="Send private message"
-                  >
-                    💬
-                  </button>
-                {/if}
                 <span class="message-timestamp">{formatTime(message.created_at)}</span>
                 {#if message.user_id === $authStore?.id}
                   <button class="delete-whisper" on:click={() => deleteMessage(message.id)}>×</button>
@@ -1377,15 +1377,38 @@
     border: 1px solid var(--border-gold);
   }
   
+  .soul-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: auto;
+  }
+  
+  .sidebar-dm-btn {
+    background: rgba(138, 43, 226, 0.15);
+    border: 1px solid rgba(138, 43, 226, 0.3);
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .sidebar-dm-btn:hover {
+    background: rgba(138, 43, 226, 0.3);
+    transform: scale(1.1);
+    box-shadow: 0 0 10px rgba(138, 43, 226, 0.4);
+  }
+  
   .sidebar-fellowship-btn {
-    position: absolute;
-    bottom: 8px;
-    right: 8px;
     background: rgba(255, 215, 0, 0.15);
     border: 1px solid var(--border-gold);
     border-radius: 50%;
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     cursor: pointer;
     font-size: 14px;
     transition: all 0.2s;
@@ -1846,23 +1869,6 @@
     font-size: 11px;
   }
   
-  .dm-icon {
-    background: none;
-    border: none;
-    color: var(--text-scripture);
-    font-size: 16px;
-    cursor: pointer;
-    opacity: 0.6;
-    transition: all 0.3s;
-    margin-left: 0.5rem;
-    padding: 0 0.25rem;
-  }
-  
-  .dm-icon:hover {
-    color: var(--text-divine);
-    opacity: 1;
-    transform: scale(1.2);
-  }
   
   .delete-whisper {
     margin-left: auto;
