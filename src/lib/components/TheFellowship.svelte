@@ -210,7 +210,7 @@
       .insert({
         user_id: user.id,
         user_name: $userInfo?.name || user.email?.split('@')[0],
-        content: newPostContent,
+        content: newPostContent.trim(),
         share_type: newPostType,
         is_anonymous: false,
         is_fellowship_only: true  // Mark as fellowship-only post
@@ -218,7 +218,13 @@
     
     if (!error) {
       newPostContent = '';
+      newPostType = 'general'; // Reset to default
       await loadFellowshipFeed();
+      // Optional: Show success feedback
+      console.log('Post shared with fellowship successfully!');
+    } else {
+      console.error('Error creating post:', error);
+      alert('Failed to share post. Please try again.');
     }
   }
   
@@ -312,21 +318,33 @@
     {#if currentView === 'feed'}
       <!-- Post Creator -->
       <div class="post-creator">
-        <h3>Share with your Fellowship</h3>
-        <textarea
-          bind:value={newPostContent}
-          placeholder="Share what God is doing in your life..."
-          rows="3"
-        ></textarea>
+        <div class="creator-header">
+          <h3>💬 Share with your Fellowship</h3>
+          <span class="creator-subtitle">Your message stays within your trusted circle</span>
+        </div>
+        <div class="textarea-wrapper">
+          <textarea
+            bind:value={newPostContent}
+            placeholder="Share what God is doing in your life, ask for prayer, share encouragement..."
+            rows="4"
+            class="post-textarea"
+            maxlength="1000"
+          ></textarea>
+          <div class="char-counter">{newPostContent.length}/1000</div>
+        </div>
         <div class="post-controls">
-          <select bind:value={newPostType}>
-            <option value="general">General</option>
-            <option value="prayer">Prayer Request</option>
-            <option value="testimony">Testimony</option>
-            <option value="praise">Praise Report</option>
+          <select bind:value={newPostType} class="post-type-select">
+            <option value="general">💭 General Update</option>
+            <option value="prayer">🙏 Prayer Request</option>
+            <option value="testimony">✨ Testimony</option>
+            <option value="praise">🎉 Praise Report</option>
           </select>
-          <button class="post-btn" on:click={createPost}>
-            Share with Fellowship
+          <button 
+            class="post-btn" 
+            on:click={createPost}
+            disabled={!newPostContent.trim()}
+          >
+            📤 Share with Fellowship
           </button>
         </div>
       </div>
@@ -560,27 +578,86 @@
   }
   
   .post-creator {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-gold);
-    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(138, 43, 226, 0.05));
+    border: 2px solid var(--border-gold);
+    border-radius: 16px;
     padding: 1.5rem;
     margin-bottom: 2rem;
+    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .post-creator::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary-gold), var(--primary-purple), var(--primary-gold));
+    animation: shimmer 3s linear infinite;
+  }
+  
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  
+  .creator-header {
+    margin-bottom: 1rem;
   }
   
   .post-creator h3 {
     color: var(--text-divine);
-    margin: 0 0 1rem 0;
+    margin: 0 0 0.25rem 0;
+    font-size: 1.2rem;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
   }
   
-  .post-creator textarea {
+  .creator-subtitle {
+    color: var(--text-scripture);
+    font-size: 0.85rem;
+    font-style: italic;
+  }
+  
+  .post-textarea {
     width: 100%;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--border-gold);
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 215, 0, 0.3);
     color: var(--text-light);
-    padding: 0.75rem;
-    border-radius: 8px;
+    padding: 1rem;
+    border-radius: 10px;
     font-family: inherit;
+    font-size: 1rem;
     resize: vertical;
+    transition: all 0.3s;
+  }
+  
+  .post-textarea:focus {
+    outline: none;
+    border-color: var(--border-gold);
+    background: rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+  }
+  
+  .post-textarea::placeholder {
+    color: rgba(255, 215, 0, 0.4);
+  }
+  
+  .textarea-wrapper {
+    position: relative;
+  }
+  
+  .char-counter {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    font-size: 0.75rem;
+    color: var(--text-scripture);
+    background: rgba(0, 0, 0, 0.6);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
   }
   
   .post-controls {
@@ -588,30 +665,63 @@
     gap: 1rem;
     margin-top: 1rem;
     align-items: center;
+    justify-content: space-between;
   }
   
-  .post-controls select {
-    padding: 0.5rem;
-    background: rgba(0, 0, 0, 0.3);
+  .post-type-select {
+    padding: 0.75rem 1rem;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    color: var(--text-divine);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    min-width: 150px;
+  }
+  
+  .post-type-select:hover {
+    border-color: var(--border-gold);
+    background: rgba(0, 0, 0, 0.5);
+  }
+  
+  .post-type-select:focus {
+    outline: none;
+    border-color: var(--border-gold);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+  }
+  
+  .post-type-select option {
+    background: #1a1a2e;
+    color: var(--text-divine);
     border: 1px solid var(--border-gold);
     color: var(--text-light);
     border-radius: 6px;
   }
   
   .post-btn {
-    padding: 0.5rem 1.5rem;
+    padding: 0.75rem 1.5rem;
     background: linear-gradient(135deg, var(--primary-gold), #ffb300);
     color: var(--bg-dark);
     border: none;
-    border-radius: 20px;
+    border-radius: 8px;
     font-weight: 600;
+    font-size: 1rem;
     cursor: pointer;
     transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
   }
   
-  .post-btn:hover {
+  .post-btn:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3);
+    box-shadow: 0 6px 25px rgba(255, 215, 0, 0.4);
+    background: linear-gradient(135deg, #ffb300, var(--primary-gold));
+  }
+  
+  .post-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: rgba(255, 215, 0, 0.3);
   }
   
   .fellowship-feed {
