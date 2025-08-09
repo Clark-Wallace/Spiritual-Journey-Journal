@@ -46,12 +46,20 @@ Spiritual Journey is a comprehensive faith-based platform built with Svelte, Typ
   - Testimony: Sharing faith experiences
   - Debate Room: Theological discussions
 - **Real-time Messaging**: Newest messages appear first
-- **Room Presence**: See who's in each room
+- **Room Presence**: See who's in each room with online count
 - **User Status**: Walking in faith, In prayer, Reading Word, Away
 - **Message Reactions**: Toggle reactions on messages
 - **Message Flags**: "Debate Room" suggestion, "Not The Way" inappropriate flag
 - **Voice Input**: Desktop-only voice messages
 - **Mobile Optimized**: Full-screen responsive experience
+- **Mobile Sidebar**: Slide-in user list with fellowship/chat actions
+- **Private Messaging** (Fellowship members only):
+  - Chat request system with accept/decline flow
+  - 30-second timeout for unanswered requests
+  - Real-time presence indicators (Online/Offline status)
+  - System notifications when users leave conversations
+  - Bidirectional chat opening when requests accepted
+  - Graceful fallback when database functions don't exist
 
 ### 4. Fellowship System (Private Circle)
 - **Fellowship Connections**: Friend system for spiritual accountability
@@ -82,11 +90,13 @@ Spiritual Journey is a comprehensive faith-based platform built with Svelte, Typ
 -- Core content tables
 journal_entries        -- Personal journal with mood, gratitude, content, prayer
 community_posts        -- Posts with is_fellowship_only flag for privacy control
-chat_messages          -- Room-based messages with reactions
-user_presence          -- Per-room online status tracking
+chat_messages          -- Room-based messages with reactions (includes room column)
+user_presence          -- Per-room online status tracking (includes room column)
 fellowships            -- User-to-user connections
 fellowship_requests    -- Pending fellowship invitations
 user_profiles          -- User display names and metadata
+private_messages       -- Direct messages between fellowship members
+chat_requests          -- Chat request system with expiration
 
 -- Interaction tables  
 reactions              -- Community post reactions
@@ -237,6 +247,16 @@ git add . && git commit -m "Force Vercel redeploy" && git push
 ### Database Migrations
 1. Navigate to Supabase SQL editor
 2. Run scripts from `database/` folder in order
+
+#### Private Messaging & Chat Requests
+```sql
+-- For private messaging functionality
+database/SIMPLE_PRIVATE_MESSAGES.sql     -- Basic private messages table
+database/CREATE_CHAT_REQUESTS_SAFE.sql   -- Chat request system with timeout
+database/FIX_RPC_FUNCTIONS.sql          -- Fix column ambiguity in RPC functions
+
+-- Important: App works with fallback logic even if migrations aren't run
+```
 3. Verify RPC functions exist (common cause of errors)
 
 ## UI/UX Design System
@@ -256,14 +276,26 @@ git add . && git commit -m "Force Vercel redeploy" && git push
 - Mobile-first responsive design
 - Real-time update indicators
 
+### Mobile Experience
+- **The Way Chat**: Side-by-side Users/Exit buttons in header
+- **Mobile Sidebar**: Slide-in from right with user list
+- **Touch Optimized**: Proper spacing for touch targets
+- **Fellowship Icons**: 
+  - ✓ = In fellowship (green background)
+  - ⏳ = Request pending
+  - 👋 = Incoming request
+  - 🤝 = Send new request
+  - 💬 = Private message (fellowship only)
+
 ## Critical Notes for Developers
 
 ### DO NOT MODIFY Without Understanding
 1. **Voice Feature**: Desktop-only by design (mobile keyboards have voice)
-2. **Message Ordering**: Newest first (reversed from typical chat)
-3. **Presence System**: Per-room tracking with 1-minute timeout
-4. **Fellowship System**: Complex bidirectional relationships
-5. **RLS Policies**: Critical for data security
+2. **Fallback Logic**: Private messaging works even without database migrations
+3. **Message Ordering**: Newest first (reversed from typical chat)
+4. **Presence System**: Per-room tracking with 1-minute timeout
+5. **Fellowship System**: Complex bidirectional relationships
+6. **RLS Policies**: Critical for data security
 
 ### Common Pitfalls to Avoid
 1. Don't remove `room` columns - breaks entire chat system

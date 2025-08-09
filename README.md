@@ -53,7 +53,13 @@ Features:
 - Message reactions with toggle functionality
 - Voice-to-text input (desktop only)
 - Per-room presence tracking
-- Mobile responsive full-screen experience
+- Mobile responsive full-screen experience with user sidebar
+- **Private Messaging** (Fellowship members only):
+  - Chat request system with accept/decline notifications
+  - 30-second timeout for unanswered requests
+  - Real-time presence indicators (Online/Offline)
+  - System notifications when users leave conversations
+  - Automatic chat opening for both parties when accepted
 
 ### ✨ AI-Powered Scripture Guidance
 - **Two Modes**: 
@@ -75,6 +81,20 @@ Features:
   - Scripture guidance input
 - Mobile users use native keyboard voice input
 - 60-second maximum recording duration
+
+### 📱 Mobile Experience
+- **Optimized Touch Interface**: Properly sized touch targets
+- **The Way Chat Mobile Features**:
+  - Side-by-side Users/Exit buttons in header
+  - Slide-in sidebar with online users list
+  - Fellowship status icons for quick recognition
+- **Icon System**:
+  - ✓ = In fellowship (green background)
+  - ⏳ = Fellowship request pending
+  - 👋 = Incoming fellowship request
+  - 🤝 = Send fellowship request
+  - 💬 = Private message (fellowship only)
+- **Full-Screen Experience**: Maximizes screen space on mobile devices
 
 ### 🎨 Illuminated Sanctuary Theme
 - Cathedral-inspired design with golden accents
@@ -146,6 +166,10 @@ Run these SQL scripts in your Supabase SQL editor in order:
    - `database/ADD_ROOM_COLUMN_TO_USER_PRESENCE.sql`
    - `database/ADD_PRAYER_COLUMN_TO_JOURNAL.sql`
    - `database/CREATE_FELLOWSHIP_FEED_FUNCTION.sql` or `database/FELLOWSHIP_FEED_EMPTY_SAFE.sql`
+7. **Private Messaging** (Optional - app works without these):
+   - `database/SIMPLE_PRIVATE_MESSAGES.sql` - Direct messaging table
+   - `database/CREATE_CHAT_REQUESTS_SAFE.sql` - Chat request system
+   - `database/FIX_RPC_FUNCTIONS.sql` - Fix column ambiguity issues
 
 ## 🚢 Deployment
 
