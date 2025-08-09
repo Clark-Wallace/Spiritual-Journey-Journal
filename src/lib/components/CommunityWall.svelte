@@ -52,7 +52,8 @@
           user_name: user.user_metadata?.name || 'Anonymous',
           content: postContent.trim(),
           share_type: postType,
-          is_anonymous: isAnonymous
+          is_anonymous: isAnonymous,
+          is_fellowship_only: false // Explicitly mark as community post
         });
       
       if (error) throw error;
@@ -90,7 +91,7 @@
   async function loadWallNotes() {
     loading = true;
     
-    // Load shared journal entries from community_posts
+    // Load shared journal entries from community_posts (exclude fellowship-only posts)
     const { data, error } = await supabase
       .from('community_posts')
       .select(`
@@ -107,6 +108,7 @@
           created_at
         )
       `)
+      .or('is_fellowship_only.is.null,is_fellowship_only.eq.false')
       .order('created_at', { ascending: false })
       .limit(50);
     

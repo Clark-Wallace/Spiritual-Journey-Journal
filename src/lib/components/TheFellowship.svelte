@@ -138,7 +138,7 @@
       .rpc('get_fellowship_feed', { for_user_id: user.id });
     
     if (feedError) {
-      // Fallback to direct query
+      // Fallback to direct query for fellowship-only posts
       const fellowIds = Array.from(fellowships);
       fellowIds.push(user.id); // Include own posts
       
@@ -160,6 +160,7 @@
             )
           `)
           .in('user_id', fellowIds)
+          .eq('is_fellowship_only', true)  // Only get fellowship posts
           .order('created_at', { ascending: false })
           .limit(50);
         
@@ -211,7 +212,8 @@
         user_name: $userInfo?.name || user.email?.split('@')[0],
         content: newPostContent,
         share_type: newPostType,
-        is_anonymous: false
+        is_anonymous: false,
+        is_fellowship_only: true  // Mark as fellowship-only post
       });
     
     if (!error) {
@@ -354,6 +356,10 @@
                 </button>
                 <span class="post-time">{formatDate(post.created_at)}</span>
               </div>
+              
+              {#if post.mood || post.gratitude?.length > 0}
+                <div class="journal-badge">📔 From Journal</div>
+              {/if}
               
               {#if post.share_type !== 'general'}
                 <div class="post-type post-type-{post.share_type}">
@@ -695,6 +701,18 @@
   .post-type-praise {
     background: rgba(76, 175, 80, 0.2);
     color: #81c784;
+  }
+  
+  .journal-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 193, 7, 0.1));
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 12px;
+    font-size: 0.75rem;
+    color: var(--text-divine);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
   }
   
   .post-content {

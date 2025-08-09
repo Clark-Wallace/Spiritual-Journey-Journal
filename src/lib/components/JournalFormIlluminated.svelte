@@ -1,6 +1,6 @@
 <script lang="ts">
   import { journalEntries } from '../stores';
-  import { shareToCommunity } from '../supabase';
+  import { shareToFellowship } from '../supabase';
   import type { JournalEntry } from '../types';
   import VoiceRecorder from './VoiceRecorder.svelte';
   
@@ -67,10 +67,10 @@
         throw new Error('Failed to save journal entry - no data returned');
       }
       
-      // If sharing to community feed
+      // If sharing to fellowship feed
       if (shareToFeed) {
         try {
-          const communityPost = await shareToCommunity({
+          const fellowshipPost = await shareToFellowship({
             mood,
             gratitude: validGratitude,
             content,
@@ -80,13 +80,13 @@
           });
           
           // Show specific feedback for sharing
-          if (communityPost) {
-            alert('Entry saved to your journal and shared with the community! 🎉✨');
+          if (fellowshipPost) {
+            alert('Entry saved and shared with your Fellowship! 🤝✨');
           } else {
-            alert('Entry saved to your journal, but sharing failed. Try sharing from Community later.');
+            alert('Entry saved to your journal, but sharing failed. Try sharing from Fellowship later.');
           }
         } catch (shareError) {
-          console.error('Error sharing to community:', shareError);
+          console.error('Error sharing to fellowship:', shareError);
           alert(`Entry saved to journal, but sharing failed: ${shareError.message}`);
         }
       } else {
@@ -252,7 +252,7 @@
         </label>
         
         <small class="share-note">
-          ⚠️ When shared, your entry will be visible to all community members for prayer and encouragement
+          🤝 When shared, your entry will be visible only to your Fellowship members for prayer and encouragement
         </small>
       </div>
     {/if}

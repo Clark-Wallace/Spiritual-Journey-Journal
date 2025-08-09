@@ -238,8 +238,8 @@ export const shareToCommunity = async (post: {
       gratitude: post.gratitude,
       prayer: post.prayer,
       is_anonymous: post.isAnonymous,
-      share_type: post.shareType
-      // Removed journal_entry_id and source_type until database is updated
+      share_type: post.shareType,
+      is_fellowship_only: false // Explicitly mark as community post
     })
     .select()
     .single();
@@ -257,6 +257,62 @@ export const shareToCommunity = async (post: {
         anonymous: post.isAnonymous
       });
   }
+  
+  return data;
+};
+
+// Fellowship sharing function - shares journal entries only with fellowship members
+export const shareToFellowship = async (post: {
+  mood?: string;
+  gratitude: string[];
+  content?: string;
+  prayer?: string;
+  shareType: 'post' | 'prayer' | 'testimony' | 'praise';
+  isAnonymous: boolean;
+}) => {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('User not authenticated');
+  
+  // Format the content for the fellowship feed
+  let formattedContent = '';
+  
+  if (post.mood) {
+    formattedContent += `Feeling ${post.mood} today\n\n`;
+  }
+  
+  if (post.gratitude && post.gratitude.filter(g => g).length > 0) {
+    formattedContent += '🙏 Grateful for:\n';
+    post.gratitude.filter(g => g).forEach((item, i) => {
+      formattedContent += `${i + 1}. ${item}\n`;
+    });
+    formattedContent += '\n';
+  }
+  
+  if (post.content) {
+    formattedContent += post.content;
+  }
+  
+  if (post.prayer && post.shareType === 'prayer') {
+    formattedContent += '\n\n🙏 ' + post.prayer;
+  }
+  
+  const { data, error } = await supabase
+    .from('community_posts')
+    .insert({
+      user_id: user.id,
+      user_name: post.isAnonymous ? null : user.user_metadata?.name || user.email?.split('@')[0],
+      content: formattedContent,
+      mood: post.mood,
+      gratitude: post.gratitude,
+      prayer: post.prayer,
+      is_anonymous: post.isAnonymous,
+      share_type: post.shareType,
+      is_fellowship_only: true // Mark as fellowship-only post
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
   
   return data;
 };
