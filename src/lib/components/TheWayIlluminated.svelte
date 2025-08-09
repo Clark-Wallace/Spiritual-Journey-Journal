@@ -6,6 +6,7 @@
   import VoiceRecorder from './VoiceRecorder.svelte';
   import FellowshipManager from './FellowshipManager.svelte';
   import FellowshipDebug from './FellowshipDebug.svelte';
+  import PrivateMessages from './PrivateMessages.svelte';
   
   let messages: any[] = [];
   let onlineUsers: any[] = [];
@@ -24,6 +25,11 @@
   let pendingRequests: Set<string> = new Set();
   let incomingRequests: Set<string> = new Set();
   let requestCount = 0;
+  
+  // Private messaging
+  let showPrivateMessages = false;
+  let dmRecipientId: string | null = null;
+  let dmRecipientName: string = '';
   
   // Chat rooms
   interface ChatRoom {
@@ -700,6 +706,14 @@
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   }
   
+  function openPrivateMessage(userId: string, userName: string) {
+    if (userId === $authStore?.id) return; // Can't DM yourself
+    
+    dmRecipientId = userId;
+    dmRecipientName = userName;
+    showPrivateMessages = true;
+  }
+  
   async function exitChat() {
     // Clean up presence
     await removePresence();
@@ -1009,6 +1023,15 @@
             <div class="message-scroll">
               <div class="scroll-header">
                 <span class="messenger-name">{message.user_name || 'Anonymous Soul'}</span>
+                {#if message.user_id !== $authStore?.id}
+                  <button 
+                    class="dm-icon" 
+                    on:click={() => openPrivateMessage(message.user_id, message.user_name || 'Anonymous')}
+                    title="Send private message"
+                  >
+                    💬
+                  </button>
+                {/if}
                 <span class="message-timestamp">{formatTime(message.created_at)}</span>
                 {#if message.user_id === $authStore?.id}
                   <button class="delete-whisper" on:click={() => deleteMessage(message.id)}>×</button>
@@ -1146,6 +1169,12 @@
 </div>
 
 <FellowshipManager bind:show={showFellowshipManager} />
+
+<PrivateMessages 
+  bind:isOpen={showPrivateMessages}
+  bind:recipientId={dmRecipientId}
+  bind:recipientName={dmRecipientName}
+/>
 
 {#if showDebug}
   <FellowshipDebug />
@@ -1815,6 +1844,24 @@
   .message-timestamp {
     color: var(--text-scripture);
     font-size: 11px;
+  }
+  
+  .dm-icon {
+    background: none;
+    border: none;
+    color: var(--text-scripture);
+    font-size: 16px;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: all 0.3s;
+    margin-left: 0.5rem;
+    padding: 0 0.25rem;
+  }
+  
+  .dm-icon:hover {
+    color: var(--text-divine);
+    opacity: 1;
+    transform: scale(1.2);
   }
   
   .delete-whisper {
