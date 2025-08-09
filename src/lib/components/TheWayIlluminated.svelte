@@ -16,6 +16,7 @@
   let subscription: any;
   let presenceSubscription: any;
   let requestSubscription: any;
+  let fellowshipSubscription: any;
   let isMobile = false;
   let showFellowshipManager = false;
   let showDebug = false; // Toggle with Ctrl+Shift+D
@@ -155,6 +156,9 @@
     // Set up fellowship request subscription
     setupRequestSubscription();
     
+    // Set up fellowship subscription
+    setupFellowshipSubscription();
+    
     // Clean up existing presence subscription first
     if (presenceSubscription) {
       supabase.removeChannel(presenceSubscription);
@@ -184,6 +188,9 @@
     if (requestSubscription) {
       supabase.removeChannel(requestSubscription);
     }
+    if (fellowshipSubscription) {
+      supabase.removeChannel(fellowshipSubscription);
+    }
   }
   
   async function setupRequestSubscription() {
@@ -207,6 +214,34 @@
         },
         (payload) => {
           console.log('Fellowship request change in chat:', payload);
+          loadFellowshipRequests();
+        }
+      )
+      .subscribe();
+  }
+  
+  async function setupFellowshipSubscription() {
+    const user = await getCurrentUser();
+    if (!user) return;
+    
+    // Clean up existing subscription
+    if (fellowshipSubscription) {
+      supabase.removeChannel(fellowshipSubscription);
+    }
+    
+    // Subscribe to fellowship changes for this user
+    fellowshipSubscription = supabase
+      .channel('fellowships-chat')
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'fellowships',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Fellowship change:', payload);
+          loadFellowships();
           loadFellowshipRequests();
         }
       )
@@ -252,6 +287,9 @@
     
     console.log('Loading fellowships for user:', user.id);
     
+    // Clear existing state
+    fellowships.clear();
+    
     const { data, error } = await supabase
       .rpc('get_fellowship_members', { for_user_id: user.id });
     
@@ -271,8 +309,12 @@
       }
     } else if (data) {
       fellowships = new Set(data.map((f: any) => f.fellow_id));
-      console.log('Loaded fellowships:', fellowships);
+      console.log('Loaded fellowships from RPC:', data);
+      console.log('Fellowship IDs:', fellowships);
     }
+    
+    // Force UI update
+    fellowships = new Set(fellowships);
   }
   
   async function loadFellowshipRequests() {
