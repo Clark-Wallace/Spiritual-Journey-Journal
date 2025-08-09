@@ -22,6 +22,7 @@
   let isMobile = false;
   let showFellowshipManager = false;
   let showDebug = false; // Toggle with Ctrl+Shift+D
+  let showMobileSidebar = false;
   let fellowships: Set<string> = new Set();
   let pendingRequests: Set<string> = new Set();
   let incomingRequests: Set<string> = new Set();
@@ -1087,6 +1088,81 @@
     </div>
   </div>
   
+  <!-- Mobile Sidebar Overlay -->
+  {#if showMobileSidebar && isMobile}
+    <div class="mobile-sidebar-overlay" on:click={() => showMobileSidebar = false}>
+      <div class="mobile-sidebar" on:click|stopPropagation>
+        <div class="mobile-sidebar-header">
+          <div class="sanctuary-title">👥 Who's Here</div>
+          <button class="close-mobile-sidebar" on:click={() => showMobileSidebar = false}>✕</button>
+        </div>
+        
+        <!-- Users List for Mobile -->
+        <div class="mobile-users-list">
+          <div class="souls-present">
+            <div class="souls-count">Souls Present: {onlineUsers.length}</div>
+          </div>
+          
+          {#each onlineUsers as user}
+            <div class="soul-entry">
+              <div class="soul-essence">
+                <div class="soul-name">{user.user_name || 'Anonymous'}</div>
+                <div class="soul-message">
+                  {statusConfig[user.status || 'online'].icon} {statusConfig[user.status || 'online'].label}
+                </div>
+              </div>
+              {#if user.user_id !== $authStore?.id}
+                <div class="soul-actions">
+                  {#if fellowships.has(user.user_id)}
+                    <button 
+                      class="sidebar-dm-btn"
+                      on:click|stopPropagation={() => {
+                        openPrivateMessage(user.user_id, user.user_name || 'Anonymous');
+                        showMobileSidebar = false;
+                      }}
+                      title="Send private message"
+                    >
+                      💬
+                    </button>
+                  {/if}
+                  <button 
+                    class="sidebar-fellowship-btn {fellowships.has(user.user_id) ? 'active locked' : ''} {pendingRequests.has(user.user_id) ? 'pending' : ''} {incomingRequests.has(user.user_id) ? 'incoming' : ''}"
+                    on:click={() => {
+                      toggleFellowship(user.user_id, user.user_name);
+                      showMobileSidebar = false;
+                    }}
+                    title={fellowships.has(user.user_id) ? '✓ In fellowship (manage in Fellowship Manager)' : 
+                           pendingRequests.has(user.user_id) ? 'Cancel request' :
+                           incomingRequests.has(user.user_id) ? 'Accept/Decline fellowship' : 'Add to fellowship'}
+                  >
+                    🤝
+                  </button>
+                </div>
+              {/if}
+            </div>
+          {/each}
+        </div>
+        
+        <!-- Fellowship Manager Button -->
+        <div class="mobile-fellowship-section">
+          <button 
+            class="mobile-fellowship-btn {requestCount > 0 ? 'has-requests' : ''}" 
+            on:click={() => {
+              showFellowshipManager = true;
+              showMobileSidebar = false;
+            }}
+            title="Manage Fellowship | Requests: {requestCount} | Incoming: {incomingRequests.size}"
+          >
+            👥 Fellowship Manager
+            {#if requestCount > 0}
+              <span class="request-badge">{requestCount}</span>
+            {/if}
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+  
   <!-- Main Sanctuary -->
   <div class="sanctuary-hall">
     <div class="sanctuary-ceiling">
@@ -1094,10 +1170,15 @@
         <div class="hall-name">✨ {currentRoom.name} ✨</div>
         <div class="divine-verse">"Behold, how good and pleasant it is when brothers dwell in unity!" - Psalm 133:1</div>
       </div>
-      <!-- Mobile exit button -->
-      <button class="mobile-exit-btn" on:click={exitChat} title="Exit chat">
-        ← Exit
-      </button>
+      <!-- Mobile buttons -->
+      <div class="mobile-buttons">
+        <button class="mobile-users-btn" on:click={() => showMobileSidebar = true} title="View users">
+          👥 ({onlineUsers.length})
+        </button>
+        <button class="mobile-exit-btn" on:click={exitChat} title="Exit chat">
+          ← Exit
+        </button>
+      </div>
     </div>
     
     <!-- Sacred Room Chambers -->
@@ -1665,6 +1746,23 @@
     cursor: pointer;
   }
   
+  /* Mobile buttons - hidden by default, shown only on mobile */
+  .mobile-buttons {
+    display: none;
+  }
+  
+  .mobile-users-btn {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.1));
+    border: 1px solid var(--border-gold);
+    color: var(--text-divine);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(10px);
+  }
+
   /* Main Sanctuary */
   .sanctuary-hall {
     flex: 1;
@@ -2343,9 +2441,136 @@
     
     .sanctuary-ceiling {
       position: relative;
-      padding-right: 80px; /* Make room for exit button */
+      padding-right: 140px; /* Make room for mobile buttons */
       flex-shrink: 0; /* Prevent header from shrinking */
       height: auto;
+    }
+    
+    .mobile-buttons {
+      position: absolute;
+      top: 50%;
+      right: 10px;
+      transform: translateY(-50%);
+      display: flex;
+      gap: 8px;
+    }
+    
+    .mobile-users-btn {
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.1));
+      border: 1px solid var(--border-gold);
+      color: var(--text-divine);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(10px);
+    }
+    
+    .mobile-users-btn:hover {
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 215, 0, 0.2));
+      transform: translateY(-1px);
+    }
+    
+    .mobile-sidebar-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(5px);
+      z-index: 3000;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-end;
+      padding: 0;
+    }
+    
+    .mobile-sidebar {
+      background: linear-gradient(135deg, #1a1a2e, #0f0f1e);
+      border-left: 2px solid var(--border-gold);
+      border-radius: 15px 0 0 15px;
+      width: 80%;
+      max-width: 350px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      box-shadow: -20px 0 60px rgba(0, 0, 0, 0.8),
+                  0 0 40px rgba(255, 215, 0, 0.2);
+      overflow: hidden;
+    }
+    
+    .mobile-sidebar-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border-gold);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(138, 43, 226, 0.05));
+      flex-shrink: 0;
+    }
+    
+    .close-mobile-sidebar {
+      background: none;
+      border: none;
+      color: var(--text-scripture);
+      font-size: 1.5rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .close-mobile-sidebar:hover {
+      color: var(--text-divine);
+      transform: scale(1.1);
+    }
+    
+    .mobile-users-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+    }
+    
+    .mobile-fellowship-section {
+      padding: 1rem;
+      border-top: 1px solid var(--border-gold);
+      background: rgba(0, 0, 0, 0.3);
+      flex-shrink: 0;
+    }
+    
+    .mobile-fellowship-btn {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: linear-gradient(135deg, rgba(138, 43, 226, 0.2), rgba(138, 43, 226, 0.1));
+      border: 1px solid rgba(138, 43, 226, 0.3);
+      color: var(--text-light);
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    
+    .mobile-fellowship-btn:hover {
+      background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(138, 43, 226, 0.2));
+      transform: translateY(-2px);
+    }
+    
+    .mobile-fellowship-btn.has-requests {
+      background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 193, 7, 0.1));
+      border-color: rgba(255, 193, 7, 0.3);
+      animation: pulse 2s infinite;
     }
     
     .chamber-selection {
