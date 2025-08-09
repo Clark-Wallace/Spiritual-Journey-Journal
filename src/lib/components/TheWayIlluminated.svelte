@@ -1020,13 +1020,15 @@
           </div>
           {#if user.user_id !== $authStore?.id}
             <div class="soul-actions">
-              <button 
-                class="sidebar-dm-btn"
-                on:click|stopPropagation={() => openPrivateMessage(user.user_id, user.user_name || 'Anonymous')}
-                title="Send private message"
-              >
-                💬
-              </button>
+              {#if fellowships.has(user.user_id)}
+                <button 
+                  class="sidebar-dm-btn"
+                  on:click|stopPropagation={() => openPrivateMessage(user.user_id, user.user_name || 'Anonymous')}
+                  title="Send private message"
+                >
+                  💬
+                </button>
+              {/if}
               <button 
               class="sidebar-fellowship-btn {fellowships.has(user.user_id) ? 'active locked' : ''} {pendingRequests.has(user.user_id) ? 'pending' : ''} {incomingRequests.has(user.user_id) ? 'incoming' : ''}"
               on:click={() => toggleFellowship(user.user_id, user.user_name)}
