@@ -15,6 +15,8 @@
   let presenceSubscription: any;
   let otherUserPresent = true;
   let presenceTimeoutId: any;
+  let presenceCheckTimeout: any;
+  let hasShownJoinedMessage = false;
   
   $: if (isOpen && recipientId) {
     console.log('Private messages modal opened for:', recipientName, recipientId);
@@ -32,6 +34,9 @@
     }
     if (presenceTimeoutId) {
       clearTimeout(presenceTimeoutId);
+    }
+    if (presenceCheckTimeout) {
+      clearTimeout(presenceCheckTimeout);
     }
     removeChatPresence();
   });
@@ -201,41 +206,88 @@
     // Create a unique conversation ID (sorted user IDs to ensure consistency)
     const conversationId = [user.id, recipientId].sort().join('-');
     
-    // Update presence to show we're in this chat
-    await updateChatPresence(conversationId);
+    console.log('Setting up chat presence for conversation:', conversationId);
+    
+    // Start optimistic - assume both users are present when chat opens
+    otherUserPresent = true;
+    hasShownJoinedMessage = false;
     
     // Set up subscription to monitor other user's presence
     presenceSubscription = supabase
       .channel(`chat-presence-${conversationId}`)
       .on('presence', { event: 'sync' }, () => {
         const state = presenceSubscription.presenceState();
-        const otherUserKey = Object.keys(state).find(key => key.includes(recipientId));
-        otherUserPresent = !!otherUserKey;
+        console.log('Presence sync, state keys:', Object.keys(state));
         
-        if (!otherUserPresent && isOpen) {
-          showUserLeftNotification();
+        // Look for the other user in the presence state
+        const otherUserPresent_new = Object.keys(state).some(key => {
+          const presence = state[key][0]; // Get first presence entry
+          return presence && presence.user_id === recipientId;
+        });
+        
+        console.log('Other user present:', otherUserPresent_new);
+        
+        // Only show left notification if they were previously present and now aren't
+        if (otherUserPresent && !otherUserPresent_new && hasShownJoinedMessage) {
+          // Add delay before showing left notification to avoid false positives
+          presenceCheckTimeout = setTimeout(() => {
+            if (!otherUserPresent && isOpen) {
+              showUserLeftNotification();
+            }
+          }, 5000); // 5 second delay
         }
-      })
-      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        if (key.includes(recipientId)) {
-          otherUserPresent = true;
-        }
-      })
-      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        if (key.includes(recipientId)) {
-          otherUserPresent = false;
-          if (isOpen) {
-            showUserLeftNotification();
+        
+        otherUserPresent = otherUserPresent_new;
+        if (otherUserPresent) {
+          hasShownJoinedMessage = true;
+          // Clear any pending "left" notification
+          if (presenceCheckTimeout) {
+            clearTimeout(presenceCheckTimeout);
+            presenceCheckTimeout = null;
           }
         }
       })
+      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        console.log('User joined presence:', key, newPresences);
+        newPresences.forEach(presence => {
+          if (presence.user_id === recipientId) {
+            otherUserPresent = true;
+            hasShownJoinedMessage = true;
+            // Clear any pending "left" notification
+            if (presenceCheckTimeout) {
+              clearTimeout(presenceCheckTimeout);
+              presenceCheckTimeout = null;
+            }
+          }
+        });
+      })
+      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+        console.log('User left presence:', key, leftPresences);
+        leftPresences.forEach(presence => {
+          if (presence.user_id === recipientId) {
+            otherUserPresent = false;
+            // Add delay before showing left notification
+            if (hasShownJoinedMessage) {
+              presenceCheckTimeout = setTimeout(() => {
+                if (!otherUserPresent && isOpen) {
+                  showUserLeftNotification();
+                }
+              }, 5000); // 5 second delay
+            }
+          }
+        });
+      })
       .subscribe(async (status) => {
+        console.log('Chat presence subscription status:', status);
         if (status === 'SUBSCRIBED') {
           await presenceSubscription.track({
             user_id: user.id,
             conversation_id: conversationId,
             online_at: new Date().toISOString(),
           });
+          
+          // Start heartbeat
+          updateChatPresence(conversationId);
         }
       });
   }
@@ -268,6 +320,14 @@
   }
   
   function showUserLeftNotification() {
+    // Only show the notification once per chat session
+    // Check if we already have a "left" system message
+    const hasLeftMessage = messages.some(msg => 
+      msg.is_system && msg.message.includes('has left the conversation')
+    );
+    
+    if (hasLeftMessage) return;
+    
     // Add a system message to the chat
     const systemMessage = {
       message_id: `system-${Date.now()}`,
@@ -282,6 +342,7 @@
       is_system: true
     };
     
+    console.log('Showing user left notification for:', recipientName);
     messages = [...messages, systemMessage];
     scrollToBottom();
   }
@@ -301,6 +362,7 @@
     recipientName = '';
     messages = [];
     otherUserPresent = true;
+    hasShownJoinedMessage = false;
     if (subscription) {
       subscription.unsubscribe();
       subscription = null;
@@ -312,6 +374,10 @@
     if (presenceTimeoutId) {
       clearTimeout(presenceTimeoutId);
       presenceTimeoutId = null;
+    }
+    if (presenceCheckTimeout) {
+      clearTimeout(presenceCheckTimeout);
+      presenceCheckTimeout = null;
     }
   }
   
