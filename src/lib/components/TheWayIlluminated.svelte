@@ -6,8 +6,7 @@
   import VoiceRecorder from './VoiceRecorder.svelte';
   import FellowshipManager from './FellowshipManager.svelte';
   import FellowshipDebug from './FellowshipDebug.svelte';
-  import PrivateMessagesTabbed from './PrivateMessagesTabbed.svelte';
-  import ChatRequestNotification from './ChatRequestNotification.svelte';
+  import ChatPopoutManager from './ChatPopoutManager.svelte';
   
   let messages: any[] = [];
   let onlineUsers: any[] = [];
@@ -29,9 +28,7 @@
   let requestCount = 0;
   
   // Private messaging
-  let showPrivateMessages = false;
-  let dmRecipientId: string | null = null;
-  let dmRecipientName: string = '';
+  let chatPopoutManager: ChatPopoutManager;
   let usersInCounsel: Set<string> = new Set(); // Track users in private chats
   
   // Chat rooms
@@ -778,9 +775,9 @@
       } else if (directResult.error.message?.includes('does not exist')) {
         // Table doesn't exist, open chat directly (fallback to old behavior)
         console.log('Chat requests table not found, opening chat directly');
-        dmRecipientId = userId;
-        dmRecipientName = userName;
-        showPrivateMessages = true;
+        if (chatPopoutManager) {
+          chatPopoutManager.openChat(userId, userName);
+        }
         return;
       } else {
         error = directResult.error;
@@ -798,17 +795,17 @@
       console.error('Error sending chat request:', error);
       showTemporaryMessage(`Failed to send chat request - opening chat directly`);
       // Fallback to direct chat opening
-      dmRecipientId = userId;
-      dmRecipientName = userName;
-      showPrivateMessages = true;
+      if (chatPopoutManager) {
+        chatPopoutManager.openChat(userId, userName);
+      }
     }
   }
   
   function acceptChatRequest(fromUserId: string, fromUserName: string) {
     console.log('Accepting chat from:', fromUserName, fromUserId);
-    dmRecipientId = fromUserId;
-    dmRecipientName = fromUserName;
-    showPrivateMessages = true;
+    if (chatPopoutManager) {
+      chatPopoutManager.openChat(fromUserId, fromUserName);
+    }
   }
   
   // Handle when someone accepts our chat request
@@ -825,9 +822,9 @@
     console.log('Our chat request was accepted by:', actualUserName);
     showTemporaryMessage(`${actualUserName} accepted your chat request`);
     // Auto-open the chat for the sender
-    dmRecipientId = userId;
-    dmRecipientName = actualUserName;
-    showPrivateMessages = true;
+    if (chatPopoutManager) {
+      chatPopoutManager.openChat(userId, actualUserName);
+    }
   }
   
   function showTemporaryMessage(message: string) {
@@ -1408,15 +1405,11 @@
 
 <FellowshipManager bind:show={showFellowshipManager} />
 
-<PrivateMessagesTabbed 
-  bind:isOpen={showPrivateMessages}
-  bind:recipientId={dmRecipientId}
-  bind:recipientName={dmRecipientName}
-  onAcceptChat={acceptChatRequest}
+<!-- Pop-out chat windows manager -->
+<ChatPopoutManager 
+  bind:this={chatPopoutManager}
   onCounselStatusChange={handleCounselStatusChange}
 />
-
-<ChatRequestNotification onAcceptChat={acceptChatRequest} onChatRequestAccepted={handleChatRequestAccepted} />
 
 {#if showDebug}
   <FellowshipDebug />
