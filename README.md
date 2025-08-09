@@ -25,16 +25,18 @@ Spiritual Journey is a comprehensive platform that combines personal journaling,
 ### 🌍 Community Fellowship
 - **Share Your Journey**: Optionally share journal entries with the community
 - **Post Types**: 
-  - Regular posts
+  - General posts
   - Prayer requests (with urgent flag)
   - Testimonies
   - Praise reports
 - **Anonymous Sharing**: Share while maintaining privacy
 - **Real-time Interactions**: 
-  - Reactions: Amen 🙏, Praying 🤲, Hallelujah 🎉, Love ❤️, Strength 💪
+  - Reactions: Amen 🙏, Praying 🤲, Love ❤️, Hallelujah 🎉, Strength 💪
   - Comments and encouragements with real-time updates
   - Prayer warrior commitments for prayer requests
 - **Smart Feed**: Compact, social media-style layout with "Read more" expansion
+- **Fellowship System**: Connect with other believers to see their posts in your feed
+- **Filters**: View by post type or "My Posts" only
 
 ### 💬 The Way - Live Chat Rooms
 Five themed chat rooms for different types of fellowship:
@@ -132,14 +134,18 @@ Run these SQL scripts in your Supabase SQL editor in order:
 1. **Core Tables**: `supabase/schema.sql`
    - journal_entries, user_profiles, daily_verses
 2. **Social Features**: `supabase/social-schema.sql`
-   - community_posts, encouragements, reactions, prayer_wall
+   - community_posts, encouragements, reactions, prayer_wall, prayer_warriors
 3. **Chat System**: `supabase/chat-schema.sql`
    - chat_messages, user_presence, chat_reactions
-4. **Real-time**: `supabase/enable-realtime.sql`
+4. **Fellowship System**: `database/CREATE_FELLOWSHIPS_TABLE.sql`
+   - fellowships table for user connections
+5. **Real-time**: `supabase/enable-realtime.sql`
    - Enables real-time subscriptions for all tables
-5. **Chat Reactions**: `supabase/enable-chat-reactions-realtime.sql`
-   - Enables real-time for chat reactions
-6. **Additional Updates**: Run any SQL files for room columns and presence tracking
+6. **Required Updates**: Run these critical SQL files:
+   - `database/ADD_ROOM_COLUMN_TO_CHAT_MESSAGES.sql`
+   - `database/ADD_ROOM_COLUMN_TO_USER_PRESENCE.sql`
+   - `database/ADD_PRAYER_COLUMN_TO_JOURNAL.sql`
+   - `database/CREATE_FELLOWSHIP_FEED_FUNCTION.sql` or `database/FELLOWSHIP_FEED_EMPTY_SAFE.sql`
 
 ## 🚢 Deployment
 
@@ -162,19 +168,20 @@ Run these SQL scripts in your Supabase SQL editor in order:
 ## 🛠️ Tech Stack
 
 - **Frontend**: 
-  - Svelte 5 (latest version)
-  - TypeScript for type safety
-  - Vite for fast builds
+  - Svelte 5.35.5 (latest version)
+  - TypeScript 5.8.3 for type safety
+  - Vite 7.0.4 for fast builds
 - **Backend**: 
   - Supabase (PostgreSQL database)
   - Supabase Auth (authentication)
   - Supabase Realtime (WebSocket subscriptions)
+  - Custom RPC functions for fellowship system
 - **AI/ML**: 
   - OpenAI Whisper API (voice transcription)
   - Anthropic Claude 3.5 Haiku (scripture guidance)
 - **Hosting**: 
-  - Vercel (automatic CI/CD)
-  - Vercel Functions (serverless API)
+  - Vercel (automatic CI/CD from GitHub)
+  - Vercel Functions (serverless API endpoints)
 - **Styling**: 
   - Custom CSS with CSS Variables
   - Illuminated Sanctuary theme
@@ -254,6 +261,25 @@ MIT License - see [LICENSE](LICENSE) file for details
 - **Buy Me A Coffee**: [buymeacoffee.com/clarkwallace](https://buymeacoffee.com/clarkwallace)
 - **Issues**: Create an issue on GitHub
 
+## ⚠️ Known Issues & Solutions
+
+### Fellowship Feed Error (404/400)
+If you see `get_fellowship_feed` errors:
+1. Run `database/FELLOWSHIP_FEED_EMPTY_SAFE.sql` to create the RPC function
+2. This handles both users with and without fellowships
+
+### Chat Messages Not Sending
+1. Ensure `room` column exists: Run `database/ADD_ROOM_COLUMN_TO_CHAT_MESSAGES.sql`
+2. Check user authentication status
+
+### Presence Not Showing
+1. Run `database/ADD_ROOM_COLUMN_TO_USER_PRESENCE.sql`
+2. Verify realtime is enabled for user_presence table
+
+### Journal Not Saving Prayer
+1. Run `database/ADD_PRAYER_COLUMN_TO_JOURNAL.sql`
+2. Refresh the page after running the SQL
+
 ## 🚀 Future Roadmap
 
 - [ ] Mobile app (React Native)
@@ -264,6 +290,8 @@ MIT License - see [LICENSE](LICENSE) file for details
 - [ ] Export journal entries as PDF
 - [ ] Multi-language support
 - [ ] Advanced moderation tools
+- [ ] Bible reading plans integration
+- [ ] Worship music player
 
 ---
 

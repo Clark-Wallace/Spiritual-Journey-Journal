@@ -1,226 +1,274 @@
 # CLAUDE.md - AI Assistant Context for Spiritual Journey
 
 ## Project Overview
-Spiritual Journey is a faith-based social platform built with Svelte, TypeScript, and Supabase. It combines personal journaling, community fellowship, real-time chat, and AI-powered biblical guidance.
+Spiritual Journey is a comprehensive faith-based platform built with Svelte, TypeScript, and Supabase. It combines personal spiritual journaling, community fellowship, multi-room real-time chat, and AI-powered biblical guidance into a unified spiritual growth ecosystem.
 
 **Live URL**: https://www.spiritualjourney.app  
-**GitHub**: https://github.com/Clark-Wallace/Spiritual-Journey-Journal
+**GitHub**: https://github.com/Clark-Wallace/Spiritual-Journey-Journal  
+**Status**: Production (Stable at commit c65bc7f)
 
-## Current Stack & Dependencies
+## Current Tech Stack
 - **Frontend**: Svelte 5.35.5, TypeScript 5.8.3, Vite 7.0.4
-- **Backend**: Supabase (PostgreSQL, Auth, Realtime)
-- **AI Services**: OpenAI Whisper (voice), Anthropic Claude 3.5 Haiku (guidance)
-- **Hosting**: Vercel with automatic deployments
-- **Styling**: Custom CSS with Illuminated Sanctuary theme
+- **Backend**: Supabase (PostgreSQL, Auth, Realtime subscriptions)
+- **AI Services**: 
+  - OpenAI Whisper API (voice-to-text transcription)
+  - Anthropic Claude 3.5 Haiku (contextual scripture guidance)
+- **Deployment**: Vercel (automatic deployments from main branch)
+- **Authentication**: Supabase Auth (email/password)
+- **Theme**: Custom "Illuminated Sanctuary" design system
 
-## Key Features Implemented
+## Core Features (All Implemented & Working)
 
 ### 1. Personal Journaling System
-- Mood tracking with 8 spiritual states
-- 3-item daily gratitude lists
-- Prayer journal with optional saving
-- Voice-to-text input (desktop only via Whisper API)
-- Collapsible timeline view by date
-- Share to community functionality
-- Streak tracking for consistency
+- **Mood Tracking**: 8 spiritual states (grateful, peaceful, joyful, hopeful, reflective, troubled, anxious, seeking)
+- **Daily Gratitude**: 3-item gratitude list functionality
+- **Prayer Journal**: Private prayer section with optional saving
+- **Voice Input**: Desktop voice-to-text via Whisper API (60-second max)
+- **Timeline View**: Collapsible journal entries organized by date
+- **Community Sharing**: Option to share entries with fellowship
+- **Streak Tracking**: Grace-based consistency system (3 entries/week maintains)
 
-### 2. Community Fellowship
-- Post types: General, Prayer Request, Testimony, Praise
-- Anonymous sharing option
-- Real-time reactions (Amen, Praying, Love, Hallelujah, Strength)
-- Comments/encouragements with live updates
-- Prayer warrior commitments
-- Compact feed with "Read more" expansion
-- Filter by post type or "My Posts"
+### 2. Community Wall
+- **Post Types**: General, Prayer Request, Testimony, Praise Report
+- **Anonymous Mode**: Share vulnerable content anonymously
+- **Real-time Reactions**: Amen, Praying, Love, Hallelujah, Strength
+- **Encouragements**: Comment system with live updates
+- **Prayer Warriors**: Commitment tracking for prayer requests
+- **Filtering**: By post type or "My Posts"
+- **Compact Feed**: Expandable posts with "Read more"
 
-### 3. The Way - Chat System
-- 5 themed rooms: Fellowship Hall, Prayer Chamber, Scripture Study, Testimony, Debate Room
-- Real-time messaging with newest first
-- Per-room presence tracking
-- User status options (Walking in faith, In prayer, Reading Word, Away)
-- Message reactions with toggle functionality
-- Voice input for desktop users
-- Full-screen mobile experience
+### 3. The Way - Multi-Room Chat
+- **5 Themed Rooms**:
+  - Fellowship Hall: General spiritual discussion
+  - Prayer Chamber: Prayer requests and support
+  - Scripture Study: Bible study discussions
+  - Testimony: Sharing faith experiences
+  - Debate Room: Theological discussions
+- **Real-time Messaging**: Newest messages appear first
+- **Room Presence**: See who's in each room
+- **User Status**: Walking in faith, In prayer, Reading Word, Away
+- **Message Reactions**: Toggle reactions on messages
+- **Message Flags**: "Debate Room" suggestion, "Not The Way" inappropriate flag
+- **Voice Input**: Desktop-only voice messages
+- **Mobile Optimized**: Full-screen responsive experience
 
-### 4. AI Scripture Guidance
-- Dual mode: AI-powered (Claude) or keyword matching
-- Context-aware using journal entries and mood
-- Beautiful popup modal display
-- 2-3 verses with personal application
-- Voice input for situations
-- Living Scrolls library (43 scripture compilations)
+### 4. Fellowship System
+- **Fellowship Connections**: Friend system for spiritual accountability
+- **Request Management**: Send, accept, decline fellowship requests
+- **Real-time Notifications**: Badge shows pending requests
+- **Fellowship Feed**: Private posts visible only to fellowship members
+- **Debug Tools**: Ctrl+Shift+D for fellowship debugging
 
-### 5. Voice Features
-- OpenAI Whisper API integration
-- Available in: journal, prayer, chat, guidance
-- 60-second max recording
-- Visual feedback during recording/transcription
-- Desktop only (mobile uses native keyboard voice)
+### 5. AI Scripture Guidance
+- **Dual Mode**: AI-powered (Claude) with keyword fallback
+- **Context-Aware**: Uses journal entries and mood for personalization
+- **Scripture Display**: Beautiful modal with 2-3 relevant verses
+- **Personal Application**: AI explains how verses apply to situation
+- **Voice Input**: Describe situations via voice (desktop)
+- **Living Scrolls**: 43 curated scripture compilations
 
 ## Database Schema
 
-### Core Tables
-- `journal_entries`: Personal journal data
-- `community_posts`: Shared content
-- `chat_messages`: Room-based chat with `room` column
-- `user_presence`: Room-specific presence with `room` column
-- `chat_reactions`: Message reactions
-- `encouragements`: Post comments
-- `reactions`: Post reactions
-- `prayer_wall`: Prayer requests
-- `prayer_warriors`: Prayer commitments
-
-### Important SQL Updates
+### Primary Tables
 ```sql
--- Add room column to chat_messages
+-- Core content tables
+journal_entries        -- Personal journal with mood, gratitude, content, prayer
+community_posts        -- Public posts with type, anonymity, content
+chat_messages          -- Room-based messages with reactions
+user_presence          -- Per-room online status tracking
+fellowships            -- User-to-user connections
+fellowship_requests    -- Pending fellowship invitations
+user_profiles          -- User display names and metadata
+
+-- Interaction tables  
+reactions              -- Community post reactions
+encouragements         -- Comments on community posts
+chat_reactions         -- Chat message reactions
+message_flags          -- Inappropriate content flags
+prayer_wall            -- Prayer request tracking
+prayer_warriors        -- Prayer commitment tracking
+
+-- Future features
+prayers                -- Personal prayer tracking
+bible_verses           -- Scripture storage with embeddings
+```
+
+### Critical Columns (Often Missing)
+```sql
+-- These columns must exist for app to function
 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS room VARCHAR(50) DEFAULT 'fellowship';
-
--- Add room column to user_presence  
-ALTER TABLE user_presence ADD COLUMN IF NOT EXISTS room VARCHAR(50) DEFAULT 'fellowship';
-
--- Add prayer column to journal_entries
+ALTER TABLE user_presence ADD COLUMN IF NOT EXISTS current_room VARCHAR(50) DEFAULT 'fellowship';
 ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS prayer TEXT;
+```
 
--- Enable realtime for chat_reactions
+### Required RPC Functions
+```sql
+-- Fellowship system functions (must be created)
+get_fellowship_members(for_user_id UUID)
+get_fellowship_requests(p_user_id UUID)  
+send_fellowship_request(p_from_user_id UUID, p_to_user_id UUID)
+accept_fellowship_request(p_request_id UUID, p_user_id UUID)
+decline_fellowship_request(p_request_id UUID, p_user_id UUID)
+cancel_fellowship_request(p_from_user_id UUID, p_to_user_id UUID)
+upsert_user_profile(p_user_id UUID, p_display_name TEXT)
+
+-- Fellowship feed function (often missing - causes 404/400 errors)
+get_fellowship_feed(for_user_id UUID) -- See database/FELLOWSHIP_FEED_EMPTY_SAFE.sql
+```
+
+## Environment Configuration
+
+### Development (.env)
+```bash
+VITE_SUPABASE_URL=https://zzociwrszcgrjenqqusp.supabase.co
+VITE_SUPABASE_ANON_KEY=[your-anon-key]
+OPENAI_API_KEY=[your-openai-key]      # Required for voice
+ANTHROPIC_API_KEY=[your-claude-key]   # Required for AI guidance
+```
+
+### Production (Vercel Environment Variables)
+- `OPENAI_API_KEY`: Whisper API for voice transcription
+- `ANTHROPIC_API_KEY`: Claude API for scripture guidance
+- Both must be set in Vercel dashboard for features to work
+
+## Common Issues & Solutions
+
+### Fellowship Section 404/400 Error
+```sql
+-- Run database/FELLOWSHIP_FEED_EMPTY_SAFE.sql in Supabase SQL editor
+-- This creates the missing get_fellowship_feed RPC function
+```
+
+### Voice Not Working
+- Verify OPENAI_API_KEY is set in Vercel environment
+- Must use desktop browser (mobile intentionally disabled)
+- Check browser microphone permissions
+
+### Chat Messages Not Appearing
+- Ensure `room` column exists in chat_messages table
+- Check `current_room` column in user_presence table
+- Verify user is authenticated
+
+### Reactions Not Toggling
+```sql
+-- Enable realtime for reactions
 ALTER PUBLICATION supabase_realtime ADD TABLE chat_reactions;
 ```
 
-## Environment Variables
+### User Presence Not Showing
+- Check `current_room` column exists in user_presence
+- Verify cleanup of stale presence records (>5 minutes old)
+- Ensure realtime subscriptions are active
 
-### Development (.env)
+## Project Structure
 ```
-VITE_SUPABASE_URL=https://zzociwrszcgrjenqqusp.supabase.co
-VITE_SUPABASE_ANON_KEY=[anon-key]
-OPENAI_API_KEY=[your-key]
-ANTHROPIC_API_KEY=[your-key]
+svelte-app/
+├── src/
+│   ├── App.svelte                    # Main app with navigation
+│   ├── lib/
+│   │   ├── components/
+│   │   │   ├── *Illuminated.svelte   # Themed components
+│   │   │   ├── TheWayIlluminated.svelte # Chat system
+│   │   │   ├── TheFellowship.svelte  # Fellowship feed
+│   │   │   ├── FellowshipManager.svelte # Request management
+│   │   │   └── VoiceRecorder.svelte  # Voice input
+│   │   ├── stores/                   # Svelte stores
+│   │   ├── supabase.ts               # Supabase client
+│   │   └── types.ts                  # TypeScript types
+│   └── styles/
+│       └── illuminated.css           # Theme styles
+├── api/                               # Vercel serverless functions
+│   ├── transcribe.js                 # Whisper API endpoint
+│   └── guidance.js                   # Claude API endpoint
+├── database/                          # SQL migrations
+└── supabase/                         # Additional SQL scripts
 ```
 
-### Production (Vercel)
-- `OPENAI_API_KEY`: For Whisper voice transcription
-- `ANTHROPIC_API_KEY`: For Claude scripture guidance
+## Deployment & Development
 
-## Common Commands
+### Local Development
 ```bash
-npm run dev          # Start development server
-npm run build        # Build for production
 npm install          # Install dependencies
-git push            # Auto-deploys to Vercel
+npm run dev          # Start dev server (port 5173)
 ```
 
-## API Endpoints (Vercel Functions)
-- `/api/transcribe`: Whisper voice-to-text
-- `/api/guidance`: Claude AI scripture guidance
+### Production Deployment
+```bash
+git push origin main # Automatically deploys to Vercel
+```
 
-## Known Issues & Solutions
+### Force Vercel Redeploy
+```bash
+# Create dummy commit to trigger rebuild
+echo "Force deploy $(date)" > FORCE_DEPLOY.txt
+git add . && git commit -m "Force Vercel redeploy" && git push
+```
 
-### Voice Not Working
-- Check OPENAI_API_KEY in environment
-- Ensure using desktop browser (mobile disabled intentionally)
-- Verify microphone permissions
+### Database Migrations
+1. Navigate to Supabase SQL editor
+2. Run scripts from `database/` folder in order
+3. Verify RPC functions exist (common cause of errors)
 
-### Chat Messages Not Sending
-- Ensure `room` column exists in chat_messages table
-- Check user authentication status
+## UI/UX Design System
 
-### Reactions Not Toggling
-- Run chat_reactions realtime SQL
-- Verify RLS policies are correct
+### Illuminated Sanctuary Theme
+- **Background**: Dark (#0a0a0f) with gradient overlays
+- **Primary Gold**: #ffd700 (divine accents)
+- **Purple Accent**: #8a2be2 (spiritual highlights)
+- **Text Hierarchy**: Divine > Holy > Light > Scripture
+- **Animations**: Glow effects, floating elements, divine rays
+- **Borders**: Cathedral-inspired with gradient gold
 
-### Journal Not Saving
-- Ensure `prayer` column exists in journal_entries
-- Check Supabase connection
+### Component Patterns
+- `*Illuminated`: Full theme treatment
+- `*Compact`: Space-efficient variants
+- `*Collapsible`: Expandable/collapsible content
+- Mobile-first responsive design
+- Real-time update indicators
 
-## UI/UX Patterns
+## Critical Notes for Developers
 
-### Theme: Illuminated Sanctuary
-- Dark background (#0a0a0f)
-- Golden accents (#ffd700)
-- Purple highlights (#8a2be2)
-- Divine light ray animations
-- Cathedral-inspired borders
+### DO NOT MODIFY Without Understanding
+1. **Voice Feature**: Desktop-only by design (mobile keyboards have voice)
+2. **Message Ordering**: Newest first (reversed from typical chat)
+3. **Presence System**: Per-room tracking with 1-minute timeout
+4. **Fellowship System**: Complex bidirectional relationships
+5. **RLS Policies**: Critical for data security
 
-### Component Naming
-- `*Illuminated.svelte`: Themed components
-- `*Compact.svelte`: Space-efficient versions
-- `*Collapsible.svelte`: Expandable content
+### Common Pitfalls to Avoid
+1. Don't remove `room` columns - breaks entire chat system
+2. Don't modify RPC function signatures - causes 400 errors
+3. Don't enable voice on mobile - intentionally disabled
+4. Don't change message ordering - UX decision for prayer requests
+5. Don't skip database migrations - causes missing function errors
 
-### State Management
-- Svelte stores in `/lib/stores`
-- localStorage for view persistence
-- Real-time subscriptions for live data
+### Testing Checklist
+- [ ] Create journal entry with all fields
+- [ ] Share journal to community (all post types)
+- [ ] Send chat message in each room
+- [ ] Toggle message reactions
+- [ ] Voice recording (desktop only)
+- [ ] Send/accept fellowship request
+- [ ] View fellowship feed
+- [ ] Get AI scripture guidance
+- [ ] Anonymous posting
+- [ ] Mobile responsive layout
 
-## Testing Checklist
-- [ ] Journal entry saves with mood, gratitude, content, prayer
-- [ ] Share to community works with correct post type
-- [ ] Chat messages appear in correct room
-- [ ] Reactions toggle on/off properly
-- [ ] Voice recording works on desktop
-- [ ] AI guidance returns relevant scriptures
-- [ ] Mobile layout is responsive
-- [ ] Real-time updates work across tabs
+## Support & Resources
 
-## Future Features (Not Implemented)
-- Anti-troll moderation tools
-- Prayer reminder notifications
-- PDF export for journals
-- Group prayer circles
-- Multi-language support
-- Mobile app (React Native)
+**Developer**: Clark Wallace  
+**Support**: https://buymeacoffee.com/clarkwallace  
+**Issues**: https://github.com/Clark-Wallace/Spiritual-Journey-Journal/issues  
+**Live Site**: https://www.spiritualjourney.app
 
-## Deployment Process
-1. Code pushed to GitHub main branch
-2. Vercel automatically builds and deploys
-3. Custom domain: www.spiritualjourney.app
-4. SSL handled by Vercel
+## Version History
 
-## Support Information
-- Developer: Clark Wallace
-- Buy Me a Coffee: https://buymeacoffee.com/clarkwallace
-- Issues: GitHub repository
-
-## Important Notes for AI Assistants
-
-### Always Preserve
-- Illuminated Sanctuary theme styling
-- Real-time subscription logic
-- Voice feature desktop-only design
-- Current database schema
-- Environment variable structure
-
-### Never Change Without Permission
-- Supabase connection details
-- API endpoint URLs
-- Database table names
-- Authentication flow
-- Theme color variables
-
-### Common User Requests
-1. "Add feature X" - Check if it conflicts with existing features
-2. "Fix Y not working" - Usually database column or RLS issue
-3. "Change theme" - Preserve CSS variable structure
-4. "Add voice to mobile" - Explain why it's desktop-only
-
-### Code Style Guidelines
-- Use TypeScript for new components
-- Follow existing Svelte patterns
-- Maintain consistent CSS variable usage
-- Add comments for complex logic
-- Test real-time features thoroughly
-
-## Session Context
-This app was rebuilt from React Native to Svelte in a continuous development session. Major milestones included:
-1. Initial Svelte setup with Supabase
-2. Illuminated Sanctuary theme implementation  
-3. Chat room system with presence
-4. AI scripture guidance integration
-5. Voice-to-text feature addition
-6. Community features enhancement
-7. Mobile responsiveness fixes
-
-The app is now feature-complete for MVP with all core functionality working.
+- **v2.0.0** (Current): Complete Svelte rewrite from React Native
+- **Stable Commit**: c65bc7f (recommended baseline)
+- **Major Features**: All core features implemented and working
 
 ---
 
-*Last Updated: Current Session*  
-*Version: 2.0.0*  
-*Status: Production Ready*
+*Last Updated: August 9, 2025*  
+*Status: Production Stable*  
+*Next Phase: User feedback and optimization*
