@@ -6,6 +6,18 @@
   type FellowshipView = 'feed' | 'members' | 'requests' | 'profile';
   
   let currentView: FellowshipView = 'feed';
+  
+  // Mood emojis mapping
+  const moodEmojis: Record<string, string> = {
+    grateful: '🙏',
+    peaceful: '😌',
+    joyful: '😊',
+    hopeful: '✨',
+    reflective: '🤔',
+    troubled: '😟',
+    anxious: '😰',
+    seeking: '🔍'
+  };
   let fellowships: Set<string> = new Set();
   let fellowshipMembers: any[] = [];
   let fellowshipPosts: any[] = [];
@@ -399,13 +411,18 @@
                   <span class="author-avatar">
                     {post.user_name?.slice(0, 2).toUpperCase()}
                   </span>
-                  <span class="author-name">{post.user_name}</span>
+                  <span class="author-name">
+                    {post.user_name}
+                    {#if post.mood && moodEmojis[post.mood]}
+                      <span class="mood-status">feeling {moodEmojis[post.mood]}</span>
+                    {/if}
+                  </span>
                 </button>
                 <span class="post-time">{formatDate(post.created_at)}</span>
               </div>
               
               {#if post.mood || post.gratitude?.length > 0}
-                <div class="journal-badge">📔 From Journal</div>
+                <div class="journal-badge">📔 Journal Entry</div>
               {/if}
               
               {#if post.share_type && post.share_type !== 'post'}
@@ -811,6 +828,17 @@
   .author-name {
     font-weight: 600;
     color: var(--text-divine);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .mood-status {
+    font-size: 0.85rem;
+    color: var(--text-scripture);
+    font-weight: 400;
+    font-style: italic;
+    opacity: 0.9;
   }
   
   .post-time {
@@ -844,14 +872,15 @@
   
   .journal-badge {
     display: inline-block;
-    padding: 0.2rem 0.6rem;
-    background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 193, 7, 0.1));
-    border: 1px solid rgba(255, 215, 0, 0.3);
-    border-radius: 12px;
-    font-size: 0.75rem;
-    color: var(--text-divine);
+    padding: 0.15rem 0.5rem;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 193, 7, 0.05));
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 10px;
+    font-size: 0.7rem;
+    color: var(--text-scripture);
     margin-bottom: 0.5rem;
-    font-weight: 500;
+    font-weight: 400;
+    opacity: 0.8;
   }
   
   .post-content {

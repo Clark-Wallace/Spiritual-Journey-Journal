@@ -273,27 +273,12 @@ export const shareToFellowship = async (post: {
   const user = await getCurrentUser();
   if (!user) throw new Error('User not authenticated');
   
-  // Format the content for the fellowship feed
-  let formattedContent = '';
+  // Format the content for the fellowship feed - just the journal entry
+  let formattedContent = post.content || '';
   
-  if (post.mood) {
-    formattedContent += `Feeling ${post.mood} today\n\n`;
-  }
-  
-  if (post.gratitude && post.gratitude.filter(g => g).length > 0) {
-    formattedContent += '🙏 Grateful for:\n';
-    post.gratitude.filter(g => g).forEach((item, i) => {
-      formattedContent += `${i + 1}. ${item}\n`;
-    });
-    formattedContent += '\n';
-  }
-  
-  if (post.content) {
-    formattedContent += post.content;
-  }
-  
+  // Add prayer if it's a prayer post
   if (post.prayer && post.shareType === 'prayer') {
-    formattedContent += '\n\n🙏 ' + post.prayer;
+    formattedContent += '\n\n🙏 Prayer: ' + post.prayer;
   }
   
   const { data, error } = await supabase
