@@ -1787,9 +1787,6 @@
   
   .mobile-exit-btn {
     display: none;
-    position: absolute;
-    top: 10px;
-    right: 10px;
     background: rgba(255, 67, 54, 0.2);
     border: 1px solid rgba(255, 67, 54, 0.4);
     color: #ff6b6b;
@@ -1799,7 +1796,6 @@
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s;
-    z-index: 100;
   }
   
   .mobile-exit-btn:hover {
@@ -2436,11 +2432,16 @@
     }
     
     .mobile-exit-btn {
-      display: block;
+      display: inline-block;
+      position: static;
     }
     
     .mobile-buttons {
       display: flex;
+    }
+    
+    .mobile-users-btn {
+      display: inline-block;
     }
     
     .sanctuary-ceiling {
@@ -2731,8 +2732,6 @@
   
   @media (max-width: 480px) {
     .mobile-exit-btn {
-      top: 5px;
-      right: 5px;
       padding: 5px 10px;
       font-size: 11px;
     }
