@@ -28,15 +28,14 @@ Spiritual Journey is a comprehensive faith-based platform built with Svelte, Typ
 - **Fellowship Sharing**: Journal entries now share exclusively to Fellowship (not Community)
 - **Streak Tracking**: Grace-based consistency system (3 entries/week maintains)
 
-### 2. Community Wall
+### 2. Community Wall (Public)
 - **Direct Posting**: "Pin a Note" button for creating posts directly on the wall
 - **Post Types**: General, Prayer Request, Testimony, Praise Report
 - **Anonymous Mode**: Share vulnerable content anonymously
-- **Real-time Reactions**: Amen, Praying, Love, Hallelujah, Strength
-- **Encouragements**: Comment system with live updates
-- **Prayer Warriors**: Commitment tracking for prayer requests
-- **Filtering**: By post type or "My Posts"
-- **Compact Feed**: Expandable posts with "Read more"
+- **Visual Design**: Prayer wall with sticky notes aesthetic
+- **Random Positioning**: Notes appear with varied colors and angles
+- **Real-time Updates**: Live post additions via subscriptions
+- **Prayer Counter**: Shows number of people praying
 - **Public Only**: Shows only community posts (is_fellowship_only = false)
 
 ### 3. The Way - Multi-Room Chat
@@ -54,16 +53,19 @@ Spiritual Journey is a comprehensive faith-based platform built with Svelte, Typ
 - **Voice Input**: Desktop-only voice messages
 - **Mobile Optimized**: Full-screen responsive experience
 
-### 4. Fellowship System
+### 4. Fellowship System (Private Circle)
 - **Fellowship Connections**: Friend system for spiritual accountability
 - **Request Management**: Send, accept, decline fellowship requests
 - **Real-time Notifications**: Badge shows pending requests
 - **Fellowship Feed**: Private posts visible only to fellowship members
 - **Direct Posting**: Enhanced post creator with character counter (1000 max)
-- **Journal Sharing**: Journal entries shared here show "📔 From Journal" badge
+- **Journal Sharing**: Simplified format - shows mood emoji as "feeling 😊"
 - **Post Types**: General Update, Prayer Request, Testimony, Praise Report
+- **Reactions**: Pray, Love, Amen with toggle functionality (active states)
+- **Encouragements**: Inline comment system with real-time updates
+- **Member Management**: View profiles, remove from fellowship
 - **Privacy**: All fellowship posts marked with is_fellowship_only = true
-- **Debug Tools**: Ctrl+Shift+D for fellowship debugging
+- **Debug Logging**: Console logs for troubleshooting reactions/encouragements
 
 ### 5. AI Scripture Guidance
 - **Dual Mode**: AI-powered (Claude) with keyword fallback
@@ -143,9 +145,23 @@ ANTHROPIC_API_KEY=[your-claude-key]   # Required for AI guidance
 
 ### Fellowship Section 404/400 Error
 ```sql
--- Run database/ADD_FELLOWSHIP_ONLY_TO_POSTS.sql in Supabase SQL editor
--- This adds is_fellowship_only column and updates get_fellowship_feed function
--- Note: If you get "cannot change return type" error, the script handles DROP FUNCTION
+-- Run database/COMPLETE_FELLOWSHIP_SETUP.sql in Supabase SQL editor
+-- This comprehensive migration:
+-- 1. Adds is_fellowship_only column
+-- 2. Creates/updates get_fellowship_feed function
+-- 3. Sets up reactions and encouragements tables
+-- 4. Configures RLS policies
+-- 5. Enables realtime subscriptions
+```
+
+### Reactions/Encouragements Not Working
+```sql
+-- Run database/FIX_REACTIONS_RLS.sql in Supabase SQL editor
+-- This fixes Row Level Security policies for:
+-- 1. Reactions table (view all, create own, delete own)
+-- 2. Encouragements table (view all, create, delete own)
+-- 3. Foreign key constraints
+-- 4. Proper permissions
 ```
 
 ### Journal Sharing Not Working
@@ -255,6 +271,8 @@ git add . && git commit -m "Force Vercel redeploy" && git push
 3. Don't enable voice on mobile - intentionally disabled
 4. Don't change message ordering - UX decision for prayer requests
 5. Don't skip database migrations - causes missing function errors
+6. Don't forget RLS policies - reactions/encouragements won't work without them
+7. Don't use 'general' share_type - use 'post' instead (constraint violation)
 
 ### Testing Checklist
 - [ ] Create journal entry with all fields
@@ -283,19 +301,24 @@ git add . && git commit -m "Force Vercel redeploy" && git push
 - **v2.0.0**: Complete Svelte rewrite from React Native
 - **Stable Commit**: c65bc7f (recommended baseline)
 - **Latest Features**: 
-  - Journal entries share to Fellowship only
+  - Journal entries share to Fellowship only with simplified format
   - Direct posting in both Fellowship and Community
+  - Working reactions (Pray, Love, Amen) with active states
+  - Functional encouragements with inline UI
   - Enhanced Fellowship post creator with character counter
-  - Visual indicators for journal-shared posts
+  - Prayer wall aesthetic for Community Wall
+  - Debug logging for troubleshooting
 
 ## Recent Changes Summary
 
 ### Fellowship & Community Separation (Latest)
 - Journal entries now share exclusively to Fellowship (private circle)
-- Community Wall for public posts only
-- Both sections support direct posting
+- Simplified journal sharing: mood shown as "feeling 😊", no gratitude list
+- Community Wall for public posts only with sticky notes design
+- Both sections support direct posting with different UI styles
 - is_fellowship_only flag controls visibility
-- "📔 From Journal" badge identifies shared journal entries
+- Working reactions and encouragements with proper RLS policies
+- Enhanced error handling with console debug logging
 
 ---
 
