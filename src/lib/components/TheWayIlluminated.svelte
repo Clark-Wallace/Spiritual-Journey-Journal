@@ -2505,7 +2505,11 @@
   }
   
   /* CSS animations for temporary notifications */
-  :global(@keyframes slideInDown) {
+  :global(.chat-status-message) {
+    animation: slideInDown 0.3s ease-out;
+  }
+  
+  @keyframes slideInDown {
     from {
       transform: translate(-50%, -100%);
       opacity: 0;
@@ -2516,7 +2520,7 @@
     }
   }
   
-  :global(@keyframes slideOutUp) {
+  @keyframes slideOutUp {
     from {
       transform: translate(-50%, 0);
       opacity: 1;
