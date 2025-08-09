@@ -25,10 +25,11 @@ Spiritual Journey is a comprehensive faith-based platform built with Svelte, Typ
 - **Prayer Journal**: Private prayer section with optional saving
 - **Voice Input**: Desktop voice-to-text via Whisper API (60-second max)
 - **Timeline View**: Collapsible journal entries organized by date
-- **Community Sharing**: Option to share entries with fellowship
+- **Fellowship Sharing**: Journal entries now share exclusively to Fellowship (not Community)
 - **Streak Tracking**: Grace-based consistency system (3 entries/week maintains)
 
 ### 2. Community Wall
+- **Direct Posting**: "Pin a Note" button for creating posts directly on the wall
 - **Post Types**: General, Prayer Request, Testimony, Praise Report
 - **Anonymous Mode**: Share vulnerable content anonymously
 - **Real-time Reactions**: Amen, Praying, Love, Hallelujah, Strength
@@ -36,6 +37,7 @@ Spiritual Journey is a comprehensive faith-based platform built with Svelte, Typ
 - **Prayer Warriors**: Commitment tracking for prayer requests
 - **Filtering**: By post type or "My Posts"
 - **Compact Feed**: Expandable posts with "Read more"
+- **Public Only**: Shows only community posts (is_fellowship_only = false)
 
 ### 3. The Way - Multi-Room Chat
 - **5 Themed Rooms**:
@@ -57,6 +59,10 @@ Spiritual Journey is a comprehensive faith-based platform built with Svelte, Typ
 - **Request Management**: Send, accept, decline fellowship requests
 - **Real-time Notifications**: Badge shows pending requests
 - **Fellowship Feed**: Private posts visible only to fellowship members
+- **Direct Posting**: Enhanced post creator with character counter (1000 max)
+- **Journal Sharing**: Journal entries shared here show "📔 From Journal" badge
+- **Post Types**: General Update, Prayer Request, Testimony, Praise Report
+- **Privacy**: All fellowship posts marked with is_fellowship_only = true
 - **Debug Tools**: Ctrl+Shift+D for fellowship debugging
 
 ### 5. AI Scripture Guidance
@@ -73,7 +79,7 @@ Spiritual Journey is a comprehensive faith-based platform built with Svelte, Typ
 ```sql
 -- Core content tables
 journal_entries        -- Personal journal with mood, gratitude, content, prayer
-community_posts        -- Public posts with type, anonymity, content
+community_posts        -- Posts with is_fellowship_only flag for privacy control
 chat_messages          -- Room-based messages with reactions
 user_presence          -- Per-room online status tracking
 fellowships            -- User-to-user connections
@@ -99,6 +105,7 @@ bible_verses           -- Scripture storage with embeddings
 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS room VARCHAR(50) DEFAULT 'fellowship';
 ALTER TABLE user_presence ADD COLUMN IF NOT EXISTS current_room VARCHAR(50) DEFAULT 'fellowship';
 ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS prayer TEXT;
+ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS is_fellowship_only BOOLEAN DEFAULT false;
 ```
 
 ### Required RPC Functions
@@ -113,7 +120,8 @@ cancel_fellowship_request(p_from_user_id UUID, p_to_user_id UUID)
 upsert_user_profile(p_user_id UUID, p_display_name TEXT)
 
 -- Fellowship feed function (often missing - causes 404/400 errors)
-get_fellowship_feed(for_user_id UUID) -- See database/FELLOWSHIP_FEED_EMPTY_SAFE.sql
+get_fellowship_feed(for_user_id UUID) -- See database/ADD_FELLOWSHIP_ONLY_TO_POSTS.sql
+-- Note: Must DROP FUNCTION first if changing return type
 ```
 
 ## Environment Configuration
@@ -135,9 +143,15 @@ ANTHROPIC_API_KEY=[your-claude-key]   # Required for AI guidance
 
 ### Fellowship Section 404/400 Error
 ```sql
--- Run database/FELLOWSHIP_FEED_EMPTY_SAFE.sql in Supabase SQL editor
--- This creates the missing get_fellowship_feed RPC function
+-- Run database/ADD_FELLOWSHIP_ONLY_TO_POSTS.sql in Supabase SQL editor
+-- This adds is_fellowship_only column and updates get_fellowship_feed function
+-- Note: If you get "cannot change return type" error, the script handles DROP FUNCTION
 ```
+
+### Journal Sharing Not Working
+- Ensure is_fellowship_only column exists in community_posts
+- Check that shareToFellowship function is imported (not shareToCommunity)
+- Verify fellowship connections exist for the user
 
 ### Voice Not Working
 - Verify OPENAI_API_KEY is set in Vercel environment
@@ -244,12 +258,14 @@ git add . && git commit -m "Force Vercel redeploy" && git push
 
 ### Testing Checklist
 - [ ] Create journal entry with all fields
-- [ ] Share journal to community (all post types)
+- [ ] Share journal to Fellowship (not Community)
+- [ ] Create direct post in Fellowship
+- [ ] Create direct post in Community Wall
 - [ ] Send chat message in each room
 - [ ] Toggle message reactions
 - [ ] Voice recording (desktop only)
 - [ ] Send/accept fellowship request
-- [ ] View fellowship feed
+- [ ] View fellowship feed with journal badges
 - [ ] Get AI scripture guidance
 - [ ] Anonymous posting
 - [ ] Mobile responsive layout
@@ -263,12 +279,26 @@ git add . && git commit -m "Force Vercel redeploy" && git push
 
 ## Version History
 
-- **v2.0.0** (Current): Complete Svelte rewrite from React Native
+- **v2.1.0** (Current): Fellowship privacy separation and enhanced posting
+- **v2.0.0**: Complete Svelte rewrite from React Native
 - **Stable Commit**: c65bc7f (recommended baseline)
-- **Major Features**: All core features implemented and working
+- **Latest Features**: 
+  - Journal entries share to Fellowship only
+  - Direct posting in both Fellowship and Community
+  - Enhanced Fellowship post creator with character counter
+  - Visual indicators for journal-shared posts
+
+## Recent Changes Summary
+
+### Fellowship & Community Separation (Latest)
+- Journal entries now share exclusively to Fellowship (private circle)
+- Community Wall for public posts only
+- Both sections support direct posting
+- is_fellowship_only flag controls visibility
+- "📔 From Journal" badge identifies shared journal entries
 
 ---
 
-*Last Updated: August 9, 2025*  
-*Status: Production Stable*  
+*Last Updated: Current Session*  
+*Status: Production Stable with Privacy Enhancement*  
 *Next Phase: User feedback and optimization*
