@@ -31,7 +31,8 @@
     const user = await getCurrentUser();
     if (!user) return;
     
-    const { data, error } = await supabase
+    // Try RPC function first, fallback to direct query
+    let { data, error } = await supabase
       .rpc('get_conversation_messages', {
         p_user_id: user.id,
         p_other_user_id: recipientId,
@@ -39,9 +40,60 @@
         p_offset: 0
       });
     
+    // If RPC function doesn't exist, use direct query
+    if (error && error.message?.includes('function') || error?.code === '42883') {
+      console.log('RPC function not found, using direct query');
+      
+      // Direct query fallback
+      const result = await supabase
+        .from('private_messages')
+        .select(`
+          id,
+          from_user_id,
+          to_user_id,
+          message,
+          is_read,
+          created_at
+        `)
+        .or(`and(from_user_id.eq.${user.id},to_user_id.eq.${recipientId}),and(from_user_id.eq.${recipientId},to_user_id.eq.${user.id})`)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (!result.error && result.data) {
+        // Transform data to match RPC function format
+        data = result.data.map(msg => ({
+          message_id: msg.id,
+          from_user_id: msg.from_user_id,
+          from_user_name: msg.from_user_id === user.id ? ($userInfo?.name || 'You') : recipientName,
+          to_user_id: msg.to_user_id,
+          to_user_name: msg.to_user_id === user.id ? ($userInfo?.name || 'You') : recipientName,
+          message: msg.message,
+          is_read: msg.is_read,
+          created_at: msg.created_at,
+          is_mine: msg.from_user_id === user.id
+        })).reverse();
+        
+        // Mark messages as read
+        await supabase
+          .from('private_messages')
+          .update({ is_read: true })
+          .eq('to_user_id', user.id)
+          .eq('from_user_id', recipientId)
+          .eq('is_read', false);
+        
+        error = null;
+      } else {
+        error = result.error;
+      }
+    } else if (!error && data) {
+      data = data.reverse(); // Show oldest first
+    }
+    
     if (!error && data) {
-      messages = data.reverse(); // Show oldest first
+      messages = data;
       scrollToBottom();
+    } else {
+      console.error('Error loading messages:', error);
     }
     
     loading = false;
