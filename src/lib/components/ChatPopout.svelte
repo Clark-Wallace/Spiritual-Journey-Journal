@@ -241,7 +241,7 @@
   
   // Window management
   function startDrag(e: MouseEvent | TouchEvent) {
-    if (isMinimized || isResizing) return;
+    if (isResizing) return; // Only prevent dragging when resizing, not when minimized
     isDragging = true;
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -323,12 +323,15 @@
   on:touchend={onMouseUp}
 />
 
+{@const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768}
+
 <div 
   class="chat-popout"
   class:minimized={isMinimized}
   class:dragging={isDragging}
   class:resizing={isResizing}
-  style="left: {position.x}px; top: {position.y}px; z-index: {zIndex}; width: {size.width}px; height: {isMinimized ? 'auto' : size.height + 'px'}"
+  class:mobile={isMobile}
+  style="{isMobile && !isDragging ? '' : `left: ${position.x}px; top: ${position.y}px;`} z-index: {zIndex}; width: {size.width}px; height: {isMinimized ? 'auto' : size.height + 'px'}"
   bind:this={windowElement}
   on:mousedown={bringToFront}
   role="dialog"
@@ -674,22 +677,32 @@
   
   /* Mobile responsive */
   @media (max-width: 768px) {
-    .chat-popout {
+    .chat-popout.mobile {
       width: calc(100vw - 2rem) !important;
       max-width: 400px;
+      position: fixed !important;
+    }
+    
+    .chat-popout.mobile:not(.minimized):not(.dragging) {
       height: 70vh !important;
       max-height: 600px;
-      position: fixed !important;
       left: 50% !important;
       top: 50% !important;
       transform: translate(-50%, -50%) !important;
     }
     
-    .chat-popout.minimized {
-      width: 200px !important;
+    .chat-popout.mobile.minimized:not(.dragging) {
+      width: 250px !important;
       height: auto !important;
+      min-height: auto !important;
+      left: 50% !important;
       top: 1rem !important;
       transform: translateX(-50%) !important;
+    }
+    
+    .chat-popout.mobile.dragging {
+      /* When dragging, use the position from JavaScript */
+      transform: none !important;
     }
     
     .resize-handle {
