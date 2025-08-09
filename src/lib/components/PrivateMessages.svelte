@@ -55,7 +55,7 @@
           is_read,
           created_at
         `)
-        .or(`from_user_id.eq.${user.id}.and.to_user_id.eq.${recipientId},from_user_id.eq.${recipientId}.and.to_user_id.eq.${user.id}`)
+        .or(`and(from_user_id.eq.${user.id},to_user_id.eq.${recipientId}),and(from_user_id.eq.${recipientId},to_user_id.eq.${user.id})`)
         .order('created_at', { ascending: false })
         .limit(50);
       
