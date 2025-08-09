@@ -40,11 +40,11 @@
         p_offset: 0
       });
     
-    // If RPC function doesn't exist, use direct query
-    if (error && error.message?.includes('function') || error?.code === '42883') {
-      console.log('RPC function not found, using direct query');
+    // If RPC function has errors or doesn't exist, use direct query
+    if (error && (error.message?.includes('function') || error?.code === '42883' || error?.code === '42702')) {
+      console.log('RPC function error, using direct query:', error);
       
-      // Direct query fallback
+      // Direct query fallback - get messages between the two users
       const result = await supabase
         .from('private_messages')
         .select(`
@@ -55,7 +55,7 @@
           is_read,
           created_at
         `)
-        .or(`and(from_user_id.eq.${user.id},to_user_id.eq.${recipientId}),and(from_user_id.eq.${recipientId},to_user_id.eq.${user.id})`)
+        .or(`from_user_id.eq.${user.id}.and.to_user_id.eq.${recipientId},from_user_id.eq.${recipientId}.and.to_user_id.eq.${user.id}`)
         .order('created_at', { ascending: false })
         .limit(50);
       
