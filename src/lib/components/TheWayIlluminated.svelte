@@ -733,22 +733,10 @@
     // We'll just use the userName passed in for display
     
     if (fellowships.has(userId)) {
-      // Already in fellowship - remove
-      const { error } = await supabase
-        .from('fellowships')
-        .delete()
-        .match({ user_id: user.id, fellow_id: userId });
-      
-      if (!error) {
-        // Also remove reverse fellowship
-        await supabase
-          .from('fellowships')
-          .delete()
-          .match({ user_id: userId, fellow_id: user.id });
-        
-        fellowships.delete(userId);
-        fellowships = new Set(fellowships);
-      }
+      // Already in fellowship - DON'T remove from here, just show status
+      console.log('Already in fellowship with', userName);
+      // Could show a tooltip or message
+      return; // Exit early - no removal from chat
     } else if (pendingRequests.has(userId)) {
       // Cancel pending request
       const { data, error } = await supabase
@@ -912,15 +900,15 @@
           </div>
           {#if user.user_id !== $authStore?.id}
             <button 
-              class="sidebar-fellowship-btn {pendingRequests.has(user.user_id) ? 'pending' : ''} {incomingRequests.has(user.user_id) ? 'incoming' : ''}"
+              class="sidebar-fellowship-btn {fellowships.has(user.user_id) ? 'active locked' : ''} {pendingRequests.has(user.user_id) ? 'pending' : ''} {incomingRequests.has(user.user_id) ? 'incoming' : ''}"
               on:click={() => toggleFellowship(user.user_id, user.user_name)}
-              title={fellowships.has(user.user_id) ? 'Remove from fellowship' : 
+              title={fellowships.has(user.user_id) ? '✓ In fellowship (manage in Fellowship Manager)' : 
                      pendingRequests.has(user.user_id) ? 'Cancel request' :
                      incomingRequests.has(user.user_id) ? 'Accept request' : 
                      'Send fellowship request'}
             >
               {#if fellowships.has(user.user_id)}
-                <span>👥</span>
+                <span>✓</span>
               {:else if pendingRequests.has(user.user_id)}
                 <span>⏳</span>
               {:else if incomingRequests.has(user.user_id)}
@@ -1394,6 +1382,22 @@
     background: rgba(76, 175, 80, 0.2);
     border-color: #4caf50;
     animation: pulse 2s infinite;
+  }
+  
+  .sidebar-fellowship-btn.active {
+    background: rgba(76, 175, 80, 0.3);
+    border-color: #4caf50;
+    color: #4caf50;
+  }
+  
+  .sidebar-fellowship-btn.locked {
+    cursor: not-allowed;
+    opacity: 0.8;
+  }
+  
+  .sidebar-fellowship-btn.locked:hover {
+    transform: none;
+    background: rgba(76, 175, 80, 0.3);
   }
   
   @keyframes pulse {
