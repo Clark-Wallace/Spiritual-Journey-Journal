@@ -9,23 +9,64 @@
   export let recipientName: string = '';
   export let onAcceptChat: ((fromUserId: string, fromUserName: string) => void) | null = null;
   
-  let messages: any[] = [];
-  let newMessage = '';
-  let loading = false;
+  // Tab management
+  interface ChatTab {
+    id: string;
+    name: string;
+    messages: any[];
+    newMessage: string;
+    loading: boolean;
+    subscription: any;
+    presenceSubscription: any;
+    otherUserPresent: boolean;
+    presenceTimeoutId: any;
+    presenceCheckTimeout: any;
+    hasShownJoinedMessage: boolean;
+    unreadCount: number;
+  }
+  
+  let tabs: ChatTab[] = [];
+  let activeTabId: string | null = null;
   let messagesContainer: HTMLDivElement;
-  let subscription: any;
-  let presenceSubscription: any;
-  let otherUserPresent = true;
-  let presenceTimeoutId: any;
-  let presenceCheckTimeout: any;
-  let hasShownJoinedMessage = false;
   let pendingRequestCount = 0;
   
-  $: if (isOpen && recipientId) {
-    console.log('Private messages modal opened for:', recipientName, recipientId);
-    loadMessages();
-    setupRealtimeSubscription();
-    setupChatPresence();
+  // Get active tab
+  $: activeTab = tabs.find(t => t.id === activeTabId);
+  $: messages = activeTab?.messages || [];
+  $: newMessage = activeTab?.newMessage || '';
+  $: loading = activeTab?.loading || false;
+  $: otherUserPresent = activeTab?.otherUserPresent || false;
+  
+  $: if (isOpen && recipientId && recipientName) {
+    // Check if tab already exists
+    const existingTab = tabs.find(t => t.id === recipientId);
+    if (!existingTab) {
+      // Create new tab
+      const newTab: ChatTab = {
+        id: recipientId,
+        name: recipientName,
+        messages: [],
+        newMessage: '',
+        loading: false,
+        subscription: null,
+        presenceSubscription: null,
+        otherUserPresent: true,
+        presenceTimeoutId: null,
+        presenceCheckTimeout: null,
+        hasShownJoinedMessage: false,
+        unreadCount: 0
+      };
+      tabs = [...tabs, newTab];
+      activeTabId = recipientId;
+      
+      // Load messages for new tab
+      loadMessagesForTab(recipientId);
+      setupRealtimeSubscriptionForTab(recipientId);
+      setupChatPresenceForTab(recipientId);
+    } else {
+      // Switch to existing tab
+      activeTabId = recipientId;
+    }
     checkPendingRequests();
   }
   
@@ -39,18 +80,21 @@
   });
   
   onDestroy(() => {
-    if (subscription) {
-      subscription.unsubscribe();
-    }
-    if (presenceSubscription) {
-      presenceSubscription.unsubscribe();
-    }
-    if (presenceTimeoutId) {
-      clearTimeout(presenceTimeoutId);
-    }
-    if (presenceCheckTimeout) {
-      clearTimeout(presenceCheckTimeout);
-    }
+    // Clean up all tabs
+    tabs.forEach(tab => {
+      if (tab.subscription) {
+        tab.subscription.unsubscribe();
+      }
+      if (tab.presenceSubscription) {
+        tab.presenceSubscription.unsubscribe();
+      }
+      if (tab.presenceTimeoutId) {
+        clearTimeout(tab.presenceTimeoutId);
+      }
+      if (tab.presenceCheckTimeout) {
+        clearTimeout(tab.presenceCheckTimeout);
+      }
+    });
     removeChatPresence();
   });
   
@@ -74,10 +118,13 @@
     }
   }
   
-  async function loadMessages() {
-    if (!recipientId) return;
+  async function loadMessagesForTab(tabId: string) {
+    const tab = tabs.find(t => t.id === tabId);
+    if (!tab) return;
     
-    loading = true;
+    tab.loading = true;
+    tabs = tabs; // Trigger reactivity
+    
     const user = await getCurrentUser();
     if (!user) return;
     

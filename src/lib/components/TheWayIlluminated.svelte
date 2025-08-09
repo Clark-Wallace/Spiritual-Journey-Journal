@@ -6,7 +6,7 @@
   import VoiceRecorder from './VoiceRecorder.svelte';
   import FellowshipManager from './FellowshipManager.svelte';
   import FellowshipDebug from './FellowshipDebug.svelte';
-  import PrivateMessages from './PrivateMessages.svelte';
+  import PrivateMessagesTabbed from './PrivateMessagesTabbed.svelte';
   import ChatRequestNotification from './ChatRequestNotification.svelte';
   
   let messages: any[] = [];
@@ -32,6 +32,7 @@
   let showPrivateMessages = false;
   let dmRecipientId: string | null = null;
   let dmRecipientName: string = '';
+  let usersInCounsel: Set<string> = new Set(); // Track users in private chats
   
   // Chat rooms
   interface ChatRoom {
@@ -811,6 +812,11 @@
   }
   
   // Handle when someone accepts our chat request
+  function handleCounselStatusChange(userIds: string[]) {
+    // Update the set of users in counsel
+    usersInCounsel = new Set(userIds);
+  }
+  
   function handleChatRequestAccepted(userId: string, userName: string) {
     // Look up the actual user name from our online users list
     const user = onlineUsers.find(u => u.user_id === userId);
@@ -1043,6 +1049,9 @@
             <div class="presence-aura aura-{user.status || 'online'}"></div>
             {#if fellowships.has(user.user_id)}
               <span class="sidebar-fellowship-indicator" title="In your fellowship">👤</span>
+            {/if}
+            {#if usersInCounsel.has(user.user_id)}
+              <span class="in-counsel-indicator" title="In private counsel">🤝</span>
             {/if}
           </div>
           <div class="soul-details">
@@ -1399,11 +1408,12 @@
 
 <FellowshipManager bind:show={showFellowshipManager} />
 
-<PrivateMessages 
+<PrivateMessagesTabbed 
   bind:isOpen={showPrivateMessages}
   bind:recipientId={dmRecipientId}
   bind:recipientName={dmRecipientName}
   onAcceptChat={acceptChatRequest}
+  onCounselStatusChange={handleCounselStatusChange}
 />
 
 <ChatRequestNotification onAcceptChat={acceptChatRequest} onChatRequestAccepted={handleChatRequestAccepted} />
@@ -1607,6 +1617,30 @@
     border-radius: 50%;
     padding: 1px;
     border: 1px solid var(--border-gold);
+  }
+  
+  .in-counsel-indicator {
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    font-size: 0.75rem;
+    background: linear-gradient(135deg, #9c27b0, #e91e63);
+    border-radius: 50%;
+    padding: 2px;
+    border: 1px solid var(--bg-dark);
+    animation: gentle-pulse 3s infinite;
+    box-shadow: 0 0 10px rgba(233, 30, 99, 0.5);
+  }
+  
+  @keyframes gentle-pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.05);
+      opacity: 0.9;
+    }
   }
   
   .soul-actions {
