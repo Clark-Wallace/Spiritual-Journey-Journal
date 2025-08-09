@@ -8,9 +8,63 @@
   let loading = true;
   let selectedNote: any = null;
   let showNoteDetail = false;
+  let showCreatePost = false;
+  let postContent = '';
+  let postType = 'general';
+  let isAnonymous = false;
+  let isSubmitting = false;
   
   function exitWall() {
     currentView.set('home');
+  }
+  
+  function openCreatePost() {
+    showCreatePost = true;
+    postContent = '';
+    postType = 'general';
+    isAnonymous = false;
+  }
+  
+  function closeCreatePost() {
+    showCreatePost = false;
+    postContent = '';
+    postType = 'general';
+    isAnonymous = false;
+  }
+  
+  async function submitPost() {
+    if (!postContent.trim() || isSubmitting) return;
+    
+    isSubmitting = true;
+    const user = await authStore.getUser();
+    
+    if (!user) {
+      alert('Please log in to post');
+      isSubmitting = false;
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('community_posts')
+        .insert({
+          user_id: user.id,
+          user_name: user.user_metadata?.name || 'Anonymous',
+          content: postContent.trim(),
+          share_type: postType,
+          is_anonymous: isAnonymous
+        });
+      
+      if (error) throw error;
+      
+      // Success - close modal and reset
+      closeCreatePost();
+    } catch (error) {
+      console.error('Error posting:', error);
+      alert('Failed to create post. Please try again.');
+    } finally {
+      isSubmitting = false;
+    }
   }
   
   // Different note colors for variety
@@ -178,6 +232,10 @@
     </button>
     <h1>✨ Community Wall ✨</h1>
     <p class="wall-subtitle">Shared journal entries, prayers, and testimonies from the faithful</p>
+    <button class="create-post-btn" on:click={openCreatePost}>
+      <span class="desktop-text">✍️ Pin a Note</span>
+      <span class="mobile-text">✍️</span>
+    </button>
   </div>
   
   {#if loading}
@@ -234,7 +292,7 @@
       {#if wallNotes.length === 0}
         <div class="empty-wall">
           <p>The prayer wall is empty.</p>
-          <p>Share a journal entry to pin the first note!</p>
+          <p>Click "Pin a Note" to add the first post!</p>
         </div>
       {/if}
     </div>
@@ -297,9 +355,75 @@
       </div>
     </div>
   {/if}
+  
+  <!-- Create Post Modal -->
+  {#if showCreatePost}
+    <div class="create-post-overlay" on:click={closeCreatePost}>
+      <div class="create-post-modal" on:click|stopPropagation>
+        <button class="close-btn" on:click={closeCreatePost}>✕</button>
+        
+        <h2>📝 Pin a Note to the Wall</h2>
+        
+        <div class="post-form">
+          <div class="form-group">
+            <label for="post-type">Type of Post:</label>
+            <select id="post-type" bind:value={postType} class="post-type-select">
+              <option value="general">General</option>
+              <option value="prayer">🙏 Prayer Request</option>
+              <option value="testimony">✨ Testimony</option>
+              <option value="praise">🎉 Praise Report</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="post-content">Your Message:</label>
+            <textarea 
+              id="post-content"
+              bind:value={postContent}
+              placeholder={postType === 'prayer' ? 'Share your prayer request...' : 
+                          postType === 'testimony' ? 'Share your testimony...' :
+                          postType === 'praise' ? 'Share your praise report...' :
+                          'Share your thoughts...'}
+              class="post-textarea"
+              rows="6"
+              maxlength="500"
+            ></textarea>
+            <div class="char-count">{postContent.length}/500</div>
+          </div>
+          
+          <div class="form-group checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" bind:checked={isAnonymous} />
+              <span>Post anonymously</span>
+            </label>
+          </div>
+          
+          <div class="form-actions">
+            <button 
+              class="cancel-btn" 
+              on:click={closeCreatePost}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </button>
+            <button 
+              class="submit-btn"
+              on:click={submitPost}
+              disabled={!postContent.trim() || isSubmitting}
+            >
+              {isSubmitting ? 'Pinning...' : '📌 Pin to Wall'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
+  /* Add handwriting font from Google Fonts */
+  @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&display=swap');
+  
   .wall-container {
     min-height: calc(100vh - 200px);
     padding: 1rem;
@@ -349,6 +473,37 @@
     background: rgba(255, 215, 0, 0.2);
     transform: translateX(-5px);
     box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+  }
+  
+  .create-post-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    border: 2px solid var(--border-gold);
+    color: #333;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.3s;
+    z-index: 101;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+  }
+  
+  .create-post-btn:hover {
+    background: linear-gradient(135deg, #ffed4e, #ffd700);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(255, 215, 0, 0.4);
+  }
+  
+  .desktop-text {
+    display: inline;
+  }
+  
+  .mobile-text {
+    display: none;
   }
   
   .wall-header {
@@ -664,8 +819,185 @@
     color: var(--text-scripture);
   }
   
-  /* Add handwriting font from Google Fonts */
-  @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&display=swap');
+  /* Create Post Modal Styles */
+  .create-post-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+  }
+  
+  .create-post-modal {
+    background: linear-gradient(135deg, #1a1a2e, #0f0f1e);
+    border: 2px solid var(--border-gold);
+    color: var(--text-divine);
+    max-width: 500px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 
+      0 20px 60px rgba(0, 0, 0, 0.8),
+      0 0 40px rgba(255, 215, 0, 0.2);
+    position: relative;
+  }
+  
+  .create-post-modal h2 {
+    color: var(--text-divine);
+    margin: 0 0 1.5rem 0;
+    text-align: center;
+    font-size: 1.8rem;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+  }
+  
+  .post-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+  }
+  
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .form-group label {
+    color: var(--text-scripture);
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  
+  .post-type-select {
+    padding: 0.75rem;
+    background: rgba(255, 215, 0, 0.05);
+    border: 1px solid var(--border-gold);
+    border-radius: 8px;
+    color: var(--text-divine);
+    font-size: 1rem;
+    transition: all 0.3s;
+  }
+  
+  .post-type-select:focus {
+    outline: none;
+    border-color: var(--text-divine);
+    background: rgba(255, 215, 0, 0.1);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+  }
+  
+  .post-type-select option {
+    background: #1a1a2e;
+    color: var(--text-divine);
+  }
+  
+  .post-textarea {
+    padding: 1rem;
+    background: rgba(255, 215, 0, 0.05);
+    border: 1px solid var(--border-gold);
+    border-radius: 8px;
+    color: var(--text-divine);
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 120px;
+    transition: all 0.3s;
+  }
+  
+  .post-textarea:focus {
+    outline: none;
+    border-color: var(--text-divine);
+    background: rgba(255, 215, 0, 0.1);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+  }
+  
+  .post-textarea::placeholder {
+    color: rgba(255, 215, 0, 0.4);
+  }
+  
+  .char-count {
+    text-align: right;
+    font-size: 0.8rem;
+    color: var(--text-scripture);
+    margin-top: -0.3rem;
+  }
+  
+  .checkbox-group {
+    margin: 0.5rem 0;
+  }
+  
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    color: var(--text-scripture);
+    font-size: 0.95rem;
+  }
+  
+  .checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--text-divine);
+    cursor: pointer;
+  }
+  
+  .form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1rem;
+  }
+  
+  .cancel-btn {
+    padding: 0.75rem 1.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-scripture);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s;
+  }
+  
+  .cancel-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+  
+  .submit-btn {
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    border: none;
+    color: #333;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+  }
+  
+  .submit-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #ffed4e, #ffd700);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(255, 215, 0, 0.4);
+  }
+  
+  .submit-btn:disabled,
+  .cancel-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
   
   @media (max-width: 768px) {
     .notes-grid {
@@ -680,6 +1012,43 @@
     
     .note-text {
       font-size: 0.85rem;
+    }
+    
+    .create-post-btn {
+      position: fixed;
+      bottom: 2rem;
+      right: 1rem;
+      top: auto;
+      padding: 1rem;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 20px rgba(255, 215, 0, 0.4);
+    }
+    
+    .create-post-btn:hover {
+      transform: scale(1.1);
+    }
+    
+    .desktop-text {
+      display: none;
+    }
+    
+    .mobile-text {
+      display: inline;
+    }
+    
+    .create-post-modal {
+      padding: 1.5rem;
+      margin: 1rem;
+    }
+    
+    .wall-header h1 {
+      font-size: 2rem;
     }
   }
 </style>
