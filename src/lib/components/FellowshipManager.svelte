@@ -14,13 +14,9 @@
   let activeTab: 'requests' | 'fellowship' = 'requests';
   let requestSubscription: any;
   
+  let hasLoaded = false;
+  
   onMount(() => {
-    if (show) {
-      loadFellowships();
-      loadRequests();
-      setupRequestSubscription();
-    }
-    
     return () => {
       if (requestSubscription) {
         supabase.removeChannel(requestSubscription);
@@ -28,7 +24,8 @@
     };
   });
   
-  $: if (show) {
+  $: if (show && !hasLoaded) {
+    hasLoaded = true;
     loadFellowships();
     loadRequests();
     setupRequestSubscription();
@@ -38,18 +35,27 @@
     }
   }
   
+  // Reset and cleanup when modal is closed
+  $: if (!show) {
+    hasLoaded = false;
+    if (requestSubscription) {
+      supabase.removeChannel(requestSubscription);
+      requestSubscription = null;
+    }
+  }
+  
   async function setupRequestSubscription() {
     const user = await authStore.getUser();
     if (!user) return;
     
-    // Clean up existing subscription
+    // Don't create duplicate subscriptions
     if (requestSubscription) {
-      supabase.removeChannel(requestSubscription);
+      return;
     }
     
     // Subscribe to changes in fellowship_requests
     requestSubscription = supabase
-      .channel('fellowship-requests')
+      .channel('fellowship-requests-manager')
       .on('postgres_changes',
         {
           event: '*',
