@@ -240,28 +240,33 @@
   }
   
   // Window management
-  function startDrag(e: MouseEvent) {
+  function startDrag(e: MouseEvent | TouchEvent) {
     if (isMinimized || isResizing) return;
     isDragging = true;
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     dragStart = {
-      x: e.clientX - position.x,
-      y: e.clientY - position.y
+      x: clientX - position.x,
+      y: clientY - position.y
     };
     e.preventDefault();
     // Prevent text selection while dragging
     document.body.style.userSelect = 'none';
   }
   
-  function onMouseMove(e: MouseEvent) {
+  function onMouseMove(e: MouseEvent | TouchEvent) {
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    
     if (isDragging) {
       position = {
-        x: Math.max(0, Math.min(window.innerWidth - size.width, e.clientX - dragStart.x)),
-        y: Math.max(0, Math.min(window.innerHeight - 50, e.clientY - dragStart.y))
+        x: Math.max(0, Math.min(window.innerWidth - size.width, clientX - dragStart.x)),
+        y: Math.max(0, Math.min(window.innerHeight - 50, clientY - dragStart.y))
       };
     } else if (isResizing) {
       size = {
-        width: Math.max(250, Math.min(800, resizeStart.width + (e.clientX - resizeStart.x))),
-        height: Math.max(300, Math.min(700, resizeStart.height + (e.clientY - resizeStart.y)))
+        width: Math.max(250, Math.min(800, resizeStart.width + (clientX - resizeStart.x))),
+        height: Math.max(300, Math.min(700, resizeStart.height + (clientY - resizeStart.y)))
       };
     }
   }
@@ -314,6 +319,8 @@
 <svelte:window 
   on:mousemove={onMouseMove}
   on:mouseup={onMouseUp}
+  on:touchmove={onMouseMove}
+  on:touchend={onMouseUp}
 />
 
 <div 
@@ -330,6 +337,7 @@
   <div 
     class="chat-header"
     on:mousedown={startDrag}
+    on:touchstart={startDrag}
   >
     <div class="header-info">
       <span class="chat-icon">💬</span>
@@ -393,7 +401,10 @@
         </button>
       </div>
     </div>
-    <!-- Resize handle -->
+  {/if}
+  
+  <!-- Resize handle - only show when not minimized -->
+  {#if !isMinimized}
     <div 
       class="resize-handle"
       on:mousedown={startResize}
@@ -419,6 +430,12 @@
   
   .chat-popout.minimized {
     height: auto !important;
+    min-height: auto !important;
+  }
+  
+  .chat-popout.minimized .chat-header {
+    border-radius: 10px;
+    border-bottom: none;
   }
   
   .chat-popout.dragging, .chat-popout.resizing {
@@ -658,17 +675,29 @@
   /* Mobile responsive */
   @media (max-width: 768px) {
     .chat-popout {
-      width: 90vw !important;
-      max-width: 350px;
+      width: calc(100vw - 2rem) !important;
+      max-width: 400px;
       height: 70vh !important;
-      position: fixed;
+      max-height: 600px;
+      position: fixed !important;
       left: 50% !important;
-      top: 15vh !important;
-      transform: translateX(-50%);
+      top: 50% !important;
+      transform: translate(-50%, -50%) !important;
+    }
+    
+    .chat-popout.minimized {
+      width: 200px !important;
+      height: auto !important;
+      top: 1rem !important;
+      transform: translateX(-50%) !important;
     }
     
     .resize-handle {
       display: none; /* Hide resize on mobile */
+    }
+    
+    .chat-header {
+      touch-action: none; /* Prevent scrolling while dragging */
     }
   }
   

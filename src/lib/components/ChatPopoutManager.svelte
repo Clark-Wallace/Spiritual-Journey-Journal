@@ -32,12 +32,18 @@
       return;
     }
     
+    // Determine position based on screen size
+    const isMobile = window.innerWidth <= 768;
+    const windowPosition = isMobile 
+      ? { x: window.innerWidth / 2 - 175, y: window.innerHeight / 2 - 300 }
+      : { ...nextPosition };
+    
     // Create new window
     const newWindow: ChatWindow = {
       id: `chat-${Date.now()}`,
       recipientId,
       recipientName,
-      position: { ...nextPosition },
+      position: windowPosition,
       zIndex: nextZIndex++
     };
     
