@@ -559,11 +559,8 @@
         return;
       }
       
-      // Update locally without reload
-      messages[messageIndex].chat_reactions = message.chat_reactions.filter(
-        r => !(r.reaction === reaction && r.user_id === user.id)
-      );
-      messages = messages; // Trigger Svelte reactivity
+      // Don't update locally - let the real-time subscription handle it
+      // This prevents duplicate removals and sync issues
       console.log('Reaction removed successfully');
     } else {
       // Add the reaction if it doesn't exist
@@ -584,15 +581,8 @@
         return;
       }
       
-      // Update locally without reload
-      if (!messages[messageIndex].chat_reactions) {
-        messages[messageIndex].chat_reactions = [];
-      }
-      messages[messageIndex].chat_reactions.push({
-        reaction,
-        user_id: user.id
-      });
-      messages = messages; // Trigger Svelte reactivity
+      // Don't update locally - let the real-time subscription handle it
+      // This prevents duplicate reactions
       console.log('Reaction added successfully:', data);
     }
   }
