@@ -10,7 +10,7 @@
   let showNoteDetail = false;
   let showCreatePost = false;
   let postContent = '';
-  let postType = 'general';
+  let postType = 'post';
   let isAnonymous = false;
   let isSubmitting = false;
   
@@ -21,14 +21,14 @@
   function openCreatePost() {
     showCreatePost = true;
     postContent = '';
-    postType = 'general';
+    postType = 'post';
     isAnonymous = false;
   }
   
   function closeCreatePost() {
     showCreatePost = false;
     postContent = '';
-    postType = 'general';
+    postType = 'post';
     isAnonymous = false;
   }
   
@@ -370,7 +370,7 @@
           <div class="form-group">
             <label for="post-type">Type of Post:</label>
             <select id="post-type" bind:value={postType} class="post-type-select">
-              <option value="general">General</option>
+              <option value="post">General</option>
               <option value="prayer">🙏 Prayer Request</option>
               <option value="testimony">✨ Testimony</option>
               <option value="praise">🎉 Praise Report</option>

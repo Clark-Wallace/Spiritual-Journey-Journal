@@ -13,7 +13,7 @@
   let selectedProfile: any = null;
   let loading = true;
   let newPostContent = '';
-  let newPostType: 'general' | 'prayer' | 'testimony' | 'praise' = 'general';
+  let newPostType: 'post' | 'prayer' | 'testimony' | 'praise' = 'post';
   
   onMount(async () => {
     await loadFellowships();
@@ -138,12 +138,14 @@
       .rpc('get_fellowship_feed', { for_user_id: user.id });
     
     if (feedError) {
-      // Fallback to direct query for fellowship-only posts
+      console.log('RPC function error, using fallback query:', feedError);
+      // Fallback to direct query - check if is_fellowship_only column exists
       const fellowIds = Array.from(fellowships);
       fellowIds.push(user.id); // Include own posts
       
       if (fellowIds.length > 0) {
-        const { data, error } = await supabase
+        // Try with is_fellowship_only first
+        let { data, error } = await supabase
           .from('community_posts')
           .select(`
             *,
@@ -163,6 +165,33 @@
           .eq('is_fellowship_only', true)  // Only get fellowship posts
           .order('created_at', { ascending: false })
           .limit(50);
+        
+        // If column doesn't exist, fall back to just user filter
+        if (error && error.message?.includes('is_fellowship_only')) {
+          console.log('is_fellowship_only column missing, using user filter only');
+          const result = await supabase
+            .from('community_posts')
+            .select(`
+              *,
+              reactions (
+                id,
+                reaction,
+                user_id
+              ),
+              encouragements (
+                id,
+                message,
+                user_name,
+                created_at
+              )
+            `)
+            .in('user_id', fellowIds)
+            .order('created_at', { ascending: false })
+            .limit(50);
+          
+          data = result.data;
+          error = result.error;
+        }
         
         if (!error) {
           fellowshipPosts = data || [];
@@ -218,7 +247,7 @@
     
     if (!error) {
       newPostContent = '';
-      newPostType = 'general'; // Reset to default
+      newPostType = 'post'; // Reset to default
       await loadFellowshipFeed();
       // Optional: Show success feedback
       console.log('Post shared with fellowship successfully!');
@@ -334,7 +363,7 @@
         </div>
         <div class="post-controls">
           <select bind:value={newPostType} class="post-type-select">
-            <option value="general">💭 General Update</option>
+            <option value="post">💭 General Update</option>
             <option value="prayer">🙏 Prayer Request</option>
             <option value="testimony">✨ Testimony</option>
             <option value="praise">🎉 Praise Report</option>
@@ -379,7 +408,7 @@
                 <div class="journal-badge">📔 From Journal</div>
               {/if}
               
-              {#if post.share_type !== 'general'}
+              {#if post.share_type && post.share_type !== 'post'}
                 <div class="post-type post-type-{post.share_type}">
                   {#if post.share_type === 'prayer'}
                     🙏 Prayer Request
