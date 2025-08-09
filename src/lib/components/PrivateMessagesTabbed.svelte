@@ -107,13 +107,27 @@
   }
   
   function cleanupTab(tab: ChatTab) {
-    if (tab.subscription) tab.subscription.unsubscribe();
-    if (tab.presenceSubscription) {
-      tab.presenceSubscription.untrack();
-      tab.presenceSubscription.unsubscribe();
+    if (tab.subscription) {
+      tab.subscription.unsubscribe();
+      tab.subscription = null;
     }
-    if (tab.presenceTimeoutId) clearTimeout(tab.presenceTimeoutId);
-    if (tab.presenceCheckTimeout) clearTimeout(tab.presenceCheckTimeout);
+    if (tab.presenceSubscription) {
+      try {
+        tab.presenceSubscription.untrack();
+        tab.presenceSubscription.unsubscribe();
+      } catch (e) {
+        console.warn('Error cleaning up presence subscription:', e);
+      }
+      tab.presenceSubscription = null;
+    }
+    if (tab.presenceTimeoutId) {
+      clearTimeout(tab.presenceTimeoutId);
+      tab.presenceTimeoutId = null;
+    }
+    if (tab.presenceCheckTimeout) {
+      clearTimeout(tab.presenceCheckTimeout);
+      tab.presenceCheckTimeout = null;
+    }
   }
   
   function closeTab(tabId: string) {
@@ -297,6 +311,7 @@
     tab.presenceSubscription = supabase
       .channel(`chat-presence-${conversationId}`)
       .on('presence', { event: 'sync' }, () => {
+        if (!tab.presenceSubscription) return; // Guard against null subscription
         const state = tab.presenceSubscription.presenceState();
         const otherUserPresent_new = Object.keys(state).some(key => {
           const presence = state[key][0];
@@ -459,22 +474,25 @@
       <!-- Tab bar -->
       <div class="dm-tabs">
         {#each tabs as tab}
-          <button 
-            class="dm-tab" 
-            class:active={activeTabId === tab.id}
-            on:click={() => { activeTabId = tab.id; tab.unreadCount = 0; tabs = tabs; }}
-          >
-            <span class="tab-name">{tab.name}</span>
-            {#if tab.unreadCount > 0}
-              <span class="unread-badge">{tab.unreadCount}</span>
-            {/if}
+          <div class="dm-tab-wrapper">
+            <button 
+              class="dm-tab" 
+              class:active={activeTabId === tab.id}
+              on:click={() => { activeTabId = tab.id; tab.unreadCount = 0; tabs = tabs; }}
+            >
+              <span class="tab-name">{tab.name}</span>
+              {#if tab.unreadCount > 0}
+                <span class="unread-badge">{tab.unreadCount}</span>
+              {/if}
+            </button>
             <button 
               class="tab-close"
-              on:click|stopPropagation={() => closeTab(tab.id)}
+              on:click={() => closeTab(tab.id)}
+              title="Close chat with {tab.name}"
             >
               ×
             </button>
-          </button>
+          </div>
         {/each}
         {#if pendingRequestCount > 0}
           <div class="pending-indicator">
@@ -589,6 +607,12 @@
     align-items: center;
   }
   
+  .dm-tab-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  
   .dm-tab {
     display: flex;
     align-items: center;
@@ -596,7 +620,7 @@
     padding: 0.5rem 1rem;
     background: rgba(255, 215, 0, 0.1);
     border: 1px solid rgba(255, 215, 0, 0.2);
-    border-radius: 20px;
+    border-radius: 20px 4px 4px 20px;
     color: var(--text-scripture);
     cursor: pointer;
     transition: all 0.2s;
@@ -631,23 +655,25 @@
   }
   
   .tab-close {
-    background: none;
-    border: none;
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 4px 20px 20px 4px;
     color: var(--text-scripture);
     font-size: 1.2rem;
     cursor: pointer;
-    padding: 0;
-    width: 20px;
-    height: 20px;
+    padding: 0.5rem 0.75rem;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     opacity: 0.6;
-    transition: opacity 0.2s;
+    transition: all 0.2s;
   }
   
   .tab-close:hover {
     opacity: 1;
+    background: rgba(255, 107, 107, 0.2);
+    border-color: rgba(255, 107, 107, 0.4);
     color: var(--text-divine);
   }
   
