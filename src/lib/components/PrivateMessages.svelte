@@ -134,42 +134,46 @@
     const user = $authStore;
     if (!user || !recipientId) return;
     
+    console.log('Setting up realtime subscription for private messages');
+    
     subscription = supabase
       .channel(`private-messages-${user.id}-${recipientId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
-        table: 'private_messages',
-        filter: `from_user_id=eq.${user.id},to_user_id=eq.${recipientId}`
+        table: 'private_messages'
       }, (payload) => {
-        const newMsg = {
-          ...payload.new,
-          from_user_name: $userInfo?.name || 'You',
-          to_user_name: recipientName,
-          is_mine: true
-        };
-        messages = [...messages, newMsg];
-        scrollToBottom();
-      })
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'private_messages',
-        filter: `from_user_id=eq.${recipientId},to_user_id=eq.${user.id}`
-      }, (payload) => {
-        const newMsg = {
-          ...payload.new,
-          from_user_name: recipientName,
-          to_user_name: $userInfo?.name || 'You',
-          is_mine: false
-        };
-        messages = [...messages, newMsg];
-        scrollToBottom();
+        console.log('Received new private message:', payload);
         
-        // Mark as read
-        markAsRead(payload.new.id);
+        // Check if this message is part of our conversation
+        const newMessage = payload.new;
+        if ((newMessage.from_user_id === user.id && newMessage.to_user_id === recipientId) ||
+            (newMessage.from_user_id === recipientId && newMessage.to_user_id === user.id)) {
+          
+          const newMsg = {
+            message_id: newMessage.id,
+            from_user_id: newMessage.from_user_id,
+            from_user_name: newMessage.from_user_id === user.id ? ($userInfo?.name || 'You') : recipientName,
+            to_user_id: newMessage.to_user_id,
+            to_user_name: newMessage.to_user_id === user.id ? ($userInfo?.name || 'You') : recipientName,
+            message: newMessage.message,
+            is_read: newMessage.is_read,
+            created_at: newMessage.created_at,
+            is_mine: newMessage.from_user_id === user.id
+          };
+          
+          messages = [...messages, newMsg];
+          scrollToBottom();
+          
+          // Mark as read if it's for us
+          if (newMessage.to_user_id === user.id && !newMessage.is_read) {
+            markAsRead(newMessage.id);
+          }
+        }
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Private messages subscription status:', status);
+      });
   }
   
   async function markAsRead(messageId: string) {

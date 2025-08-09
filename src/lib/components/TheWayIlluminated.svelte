@@ -7,6 +7,7 @@
   import FellowshipManager from './FellowshipManager.svelte';
   import FellowshipDebug from './FellowshipDebug.svelte';
   import PrivateMessages from './PrivateMessages.svelte';
+  import ChatRequestNotification from './ChatRequestNotification.svelte';
   
   let messages: any[] = [];
   let onlineUsers: any[] = [];
@@ -706,14 +707,68 @@
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   }
   
-  function openPrivateMessage(userId: string, userName: string) {
+  async function openPrivateMessage(userId: string, userName: string) {
     if (userId === $authStore?.id) return; // Can't DM yourself
     
-    console.log('Opening private message with:', userName, userId);
-    dmRecipientId = userId;
-    dmRecipientName = userName;
+    const user = await getCurrentUser();
+    if (!user) return;
+    
+    console.log('Sending chat request to:', userName, userId);
+    
+    const { data, error } = await supabase
+      .rpc('send_chat_request', {
+        p_from_user_id: user.id,
+        p_to_user_id: userId,
+        p_from_user_name: $userInfo?.name || user.email?.split('@')[0] || 'Anonymous'
+      });
+    
+    if (!error && data && data[0]) {
+      const result = data[0];
+      if (result.status === 'sent') {
+        showTemporaryMessage(`Chat request sent to ${userName}`);
+      } else if (result.status === 'exists') {
+        showTemporaryMessage(`Chat request already pending with ${userName}`);
+      }
+    } else {
+      console.error('Error sending chat request:', error);
+      showTemporaryMessage(`Failed to send chat request`);
+    }
+  }
+  
+  function acceptChatRequest(fromUserId: string, fromUserName: string) {
+    console.log('Accepting chat from:', fromUserName, fromUserId);
+    dmRecipientId = fromUserId;
+    dmRecipientName = fromUserName;
     showPrivateMessages = true;
-    console.log('Modal state:', { showPrivateMessages, dmRecipientId, dmRecipientName });
+  }
+  
+  function showTemporaryMessage(message: string) {
+    // Create a temporary notification for the sender
+    const notification = document.createElement('div');
+    notification.className = 'chat-status-message';
+    notification.textContent = message;
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #4caf50, #45a049);
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      z-index: 3000;
+      animation: slideInDown 0.3s ease-out;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.style.animation = 'slideOutUp 0.3s ease-in';
+      setTimeout(() => {
+        document.body.removeChild(notification);
+      }, 300);
+    }, 3000);
   }
   
   async function exitChat() {
@@ -1177,6 +1232,8 @@
   bind:recipientId={dmRecipientId}
   bind:recipientName={dmRecipientName}
 />
+
+<ChatRequestNotification onAcceptChat={acceptChatRequest} />
 
 {#if showDebug}
   <FellowshipDebug />
@@ -2444,6 +2501,29 @@
     .send-prayer {
       padding: 8px 14px;
       font-size: 0.85rem;
+    }
+  }
+  
+  /* CSS animations for temporary notifications */
+  :global(@keyframes slideInDown) {
+    from {
+      transform: translate(-50%, -100%);
+      opacity: 0;
+    }
+    to {
+      transform: translate(-50%, 0);
+      opacity: 1;
+    }
+  }
+  
+  :global(@keyframes slideOutUp) {
+    from {
+      transform: translate(-50%, 0);
+      opacity: 1;
+    }
+    to {
+      transform: translate(-50%, -100%);
+      opacity: 0;
     }
   }
 </style>
