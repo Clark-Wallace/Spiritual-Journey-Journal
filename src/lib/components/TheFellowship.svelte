@@ -224,14 +224,18 @@
           .select('*')
           .in('post_id', postIds);
         
-        // Combine the data
+        // Combine the data - include all fields from RPC function
         fellowshipPosts = feedData.map(post => ({
           id: post.post_id,
           user_id: post.user_id,
           user_name: post.user_name,
           content: post.content,
+          mood: post.mood,  // Include mood
+          gratitude: post.gratitude,  // Include gratitude
+          prayer: post.prayer,  // Include prayer
           share_type: post.share_type,
           is_anonymous: post.is_anonymous,
+          is_fellowship_only: post.is_fellowship_only,
           created_at: post.created_at,
           reactions: reactionsData?.filter(r => r.post_id === post.post_id) || [],
           encouragements: encouragementsData?.filter(e => e.post_id === post.post_id) || []
@@ -292,6 +296,111 @@
     };
     
     currentView = 'profile';
+  }
+  
+  async function toggleReaction(postId: string, reactionType: string = 'amen') {
+    const user = await getCurrentUser();
+    if (!user) {
+      console.error('No user found for reaction');
+      return;
+    }
+    
+    const post = fellowshipPosts.find(p => p.id === postId);
+    if (!post) {
+      console.error('Post not found:', postId);
+      return;
+    }
+    
+    console.log('Toggling reaction:', { postId, reactionType, userId: user.id });
+    
+    // Check if user already reacted
+    const existingReaction = post.reactions?.find(
+      r => r.reaction === reactionType && r.user_id === user.id
+    );
+    
+    if (existingReaction) {
+      // Remove reaction
+      console.log('Removing existing reaction:', existingReaction);
+      const { error } = await supabase
+        .from('reactions')
+        .delete()
+        .eq('id', existingReaction.id);
+      
+      if (error) {
+        console.error('Error removing reaction:', error);
+        alert('Failed to remove reaction. Please try again.');
+      } else {
+        post.reactions = post.reactions.filter(r => r.id !== existingReaction.id);
+        fellowshipPosts = fellowshipPosts; // Trigger reactivity
+        console.log('Reaction removed successfully');
+      }
+    } else {
+      // Add reaction
+      console.log('Adding new reaction');
+      const { data, error } = await supabase
+        .from('reactions')
+        .insert({
+          post_id: postId,
+          user_id: user.id,
+          reaction: reactionType
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error adding reaction:', error);
+        alert('Failed to add reaction. Please try again.');
+      } else if (data) {
+        if (!post.reactions) post.reactions = [];
+        post.reactions.push(data);
+        fellowshipPosts = fellowshipPosts; // Trigger reactivity
+        console.log('Reaction added successfully:', data);
+      }
+    }
+  }
+  
+  let encouragementInputs: Record<string, string> = {};
+  let showEncouragementInput: Record<string, boolean> = {};
+  
+  async function addEncouragement(postId: string) {
+    const user = await getCurrentUser();
+    if (!user) {
+      console.error('No user found for encouragement');
+      return;
+    }
+    
+    if (!encouragementInputs[postId]?.trim()) {
+      console.log('Empty encouragement message');
+      return;
+    }
+    
+    console.log('Adding encouragement:', { postId, userId: user.id, message: encouragementInputs[postId] });
+    
+    const { data, error } = await supabase
+      .from('encouragements')
+      .insert({
+        post_id: postId,
+        user_id: user.id,
+        user_name: $userInfo?.name || user.email?.split('@')[0],
+        message: encouragementInputs[postId].trim()
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error adding encouragement:', error);
+      alert('Failed to add encouragement. Please try again.');
+    } else if (data) {
+      const post = fellowshipPosts.find(p => p.id === postId);
+      if (post) {
+        if (!post.encouragements) post.encouragements = [];
+        post.encouragements.push(data);
+        fellowshipPosts = fellowshipPosts; // Trigger reactivity
+      }
+      encouragementInputs[postId] = '';
+      showEncouragementInput[postId] = false;
+      console.log('Encouragement added successfully:', data);
+    }
   }
   
   async function removeFellowship(fellowId: string) {
@@ -442,19 +551,63 @@
               </div>
               
               <div class="post-actions">
-                <button class="action-btn">
+                <button 
+                  class="action-btn"
+                  class:active={post.reactions?.some(r => r.reaction === 'pray' && r.user_id === $authStore?.id)}
+                  on:click={() => toggleReaction(post.id, 'pray')}
+                >
                   🙏 Pray ({post.reactions?.filter(r => r.reaction === 'pray').length || 0})
                 </button>
-                <button class="action-btn">
+                <button 
+                  class="action-btn"
+                  class:active={post.reactions?.some(r => r.reaction === 'love' && r.user_id === $authStore?.id)}
+                  on:click={() => toggleReaction(post.id, 'love')}
+                >
                   ❤️ Love ({post.reactions?.filter(r => r.reaction === 'love').length || 0})
                 </button>
-                <button class="action-btn">
+                <button 
+                  class="action-btn"
+                  class:active={post.reactions?.some(r => r.reaction === 'amen' && r.user_id === $authStore?.id)}
+                  on:click={() => toggleReaction(post.id, 'amen')}
+                >
                   🙌 Amen ({post.reactions?.filter(r => r.reaction === 'amen').length || 0})
                 </button>
-                <button class="action-btn">
+                <button 
+                  class="action-btn"
+                  on:click={() => showEncouragementInput[post.id] = !showEncouragementInput[post.id]}
+                >
                   💬 Encourage ({post.encouragements?.length || 0})
                 </button>
               </div>
+              
+              {#if showEncouragementInput[post.id]}
+                <div class="encouragement-input">
+                  <input
+                    type="text"
+                    placeholder="Share an encouraging word..."
+                    bind:value={encouragementInputs[post.id]}
+                    on:keydown={(e) => e.key === 'Enter' && addEncouragement(post.id)}
+                    class="encouragement-field"
+                  />
+                  <button 
+                    class="send-encouragement-btn"
+                    on:click={() => addEncouragement(post.id)}
+                    disabled={!encouragementInputs[post.id]?.trim()}
+                  >
+                    Send
+                  </button>
+                </div>
+              {/if}
+              
+              {#if post.encouragements?.length > 0}
+                <div class="encouragements-list">
+                  {#each post.encouragements as encouragement}
+                    <div class="encouragement-item">
+                      <strong>{encouragement.user_name}:</strong> {encouragement.message}
+                    </div>
+                  {/each}
+                </div>
+              {/if}
             </div>
           {/each}
         </div>
@@ -910,6 +1063,76 @@
   .action-btn:hover {
     background: rgba(255, 215, 0, 0.1);
     border-color: var(--border-gold);
+    color: var(--text-divine);
+  }
+  
+  .action-btn.active {
+    background: rgba(255, 215, 0, 0.15);
+    border-color: var(--border-gold);
+    color: var(--text-divine);
+  }
+  
+  .encouragement-input {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 215, 0, 0.1);
+  }
+  
+  .encouragement-field {
+    flex: 1;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    color: var(--text-light);
+    border-radius: 8px;
+    font-size: 0.9rem;
+  }
+  
+  .encouragement-field:focus {
+    outline: none;
+    border-color: var(--border-gold);
+    background: rgba(0, 0, 0, 0.4);
+  }
+  
+  .send-encouragement-btn {
+    padding: 0.5rem 1rem;
+    background: linear-gradient(135deg, var(--primary-gold), #ffb300);
+    color: var(--bg-dark);
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .send-encouragement-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+  }
+  
+  .send-encouragement-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .encouragements-list {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 215, 0, 0.1);
+  }
+  
+  .encouragement-item {
+    padding: 0.5rem;
+    background: rgba(255, 215, 0, 0.05);
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-light);
+  }
+  
+  .encouragement-item strong {
     color: var(--text-divine);
   }
   
