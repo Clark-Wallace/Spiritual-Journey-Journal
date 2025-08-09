@@ -347,17 +347,31 @@
     
     if (!confirm('Remove this person from your fellowship?')) return;
     
-    const { error } = await supabase
-      .from('fellowships')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('fellow_id', fellowId);
+    // Use RPC function to remove both sides
+    const { data, error } = await supabase
+      .rpc('remove_fellowship', {
+        p_user_id: user.id,
+        p_fellow_id: fellowId
+      });
     
     if (error) {
       console.error('Error removing from fellowship:', error);
-    } else {
-      fellowships = fellowships.filter(f => f.fellow_id !== fellowId);
+      // Fallback: try to remove both sides manually
+      await supabase
+        .from('fellowships')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('fellow_id', fellowId);
+      
+      await supabase
+        .from('fellowships')
+        .delete()
+        .eq('user_id', fellowId)
+        .eq('fellow_id', user.id);
     }
+    
+    // Update local state
+    fellowships = fellowships.filter(f => f.fellow_id !== fellowId);
   }
   
   function close() {
