@@ -1403,6 +1403,7 @@
   bind:isOpen={showPrivateMessages}
   bind:recipientId={dmRecipientId}
   bind:recipientName={dmRecipientName}
+  onAcceptChat={acceptChatRequest}
 />
 
 <ChatRequestNotification onAcceptChat={acceptChatRequest} onChatRequestAccepted={handleChatRequestAccepted} />

@@ -2,10 +2,12 @@
   import { onMount, onDestroy } from 'svelte';
   import { supabase, getCurrentUser } from '../supabase';
   import { authStore, userInfo } from '../stores/auth';
+  import ChatRequestNotification from './ChatRequestNotification.svelte';
   
   export let isOpen = false;
   export let recipientId: string | null = null;
   export let recipientName: string = '';
+  export let onAcceptChat: ((fromUserId: string, fromUserName: string) => void) | null = null;
   
   let messages: any[] = [];
   let newMessage = '';
@@ -17,13 +19,24 @@
   let presenceTimeoutId: any;
   let presenceCheckTimeout: any;
   let hasShownJoinedMessage = false;
+  let pendingRequestCount = 0;
   
   $: if (isOpen && recipientId) {
     console.log('Private messages modal opened for:', recipientName, recipientId);
     loadMessages();
     setupRealtimeSubscription();
     setupChatPresence();
+    checkPendingRequests();
   }
+  
+  onMount(() => {
+    // Check for pending requests periodically while chat is open
+    const interval = setInterval(() => {
+      if (isOpen) checkPendingRequests();
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  });
   
   onDestroy(() => {
     if (subscription) {
@@ -40,6 +53,26 @@
     }
     removeChatPresence();
   });
+  
+  async function checkPendingRequests() {
+    const user = await getCurrentUser();
+    if (!user) return;
+    
+    // Check for pending chat requests
+    const { data, error } = await supabase
+      .from('chat_requests')
+      .select('id')
+      .eq('to_user_id', user.id)
+      .eq('status', 'pending')
+      .gt('expires_at', new Date().toISOString());
+    
+    if (!error && data) {
+      pendingRequestCount = data.length;
+    } else {
+      // If table doesn't exist, just set to 0
+      pendingRequestCount = 0;
+    }
+  }
   
   async function loadMessages() {
     if (!recipientId) return;
@@ -401,18 +434,47 @@
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
   }
+
+  // Handle accepting a new chat request while in current chat
+  function handleAcceptNewChat(fromUserId: string, fromUserName: string) {
+    // Option 1: Switch to the new chat
+    // Close current chat and open new one
+    close();
+    if (onAcceptChat) {
+      onAcceptChat(fromUserId, fromUserName);
+    }
+    
+    // Option 2: Could instead show a notification that new chat is waiting
+    // and let user decide when to switch
+  }
 </script>
+
+<!-- Chat request notifications appear even while in private chat -->
+{#if isOpen}
+  <ChatRequestNotification 
+    onAcceptChat={handleAcceptNewChat}
+    onChatRequestAccepted={null}
+  />
+{/if}
 
 {#if isOpen}
   <div class="dm-overlay" on:click={close}>
     <div class="dm-container" on:click|stopPropagation>
       <div class="dm-header">
         <h3>💬 Private Message with {recipientName}</h3>
-        <div class="chat-status">
-          <span class="presence-indicator {otherUserPresent ? 'online' : 'offline'}"></span>
-          <span class="status-text">{otherUserPresent ? 'Online' : 'Offline'}</span>
+        <div class="header-right">
+          {#if pendingRequestCount > 0}
+            <div class="pending-requests-indicator">
+              <span class="request-icon">👋</span>
+              <span class="request-count">{pendingRequestCount} new {pendingRequestCount === 1 ? 'request' : 'requests'}</span>
+            </div>
+          {/if}
+          <div class="chat-status">
+            <span class="presence-indicator {otherUserPresent ? 'online' : 'offline'}"></span>
+            <span class="status-text">{otherUserPresent ? 'Online' : 'Offline'}</span>
+          </div>
+          <button class="close-btn" on:click={close}>✕</button>
         </div>
-        <button class="close-btn" on:click={close}>✕</button>
       </div>
       
       <div class="dm-messages" bind:this={messagesContainer}>
@@ -507,6 +569,51 @@
     color: var(--text-divine);
     font-size: 1.2rem;
     flex: 1;
+  }
+  
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .pending-requests-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, #ff6b6b, #ff8787);
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    animation: pulse 2s infinite;
+  }
+  
+  .request-icon {
+    font-size: 1.1rem;
+    animation: wave 1s infinite;
+  }
+  
+  @keyframes wave {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-10deg); }
+    75% { transform: rotate(10deg); }
+  }
+  
+  @keyframes pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(255, 107, 107, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(255, 107, 107, 0);
+    }
+  }
+  
+  .request-count {
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 600;
   }
   
   .chat-status {
@@ -700,6 +807,31 @@
     
     .dm-overlay {
       padding: 0;
+    }
+    
+    .dm-header {
+      flex-wrap: wrap;
+      padding: 0.75rem 1rem;
+    }
+    
+    .dm-header h3 {
+      font-size: 1rem;
+      width: 100%;
+      margin-bottom: 0.5rem;
+    }
+    
+    .header-right {
+      width: 100%;
+      justify-content: space-between;
+    }
+    
+    .pending-requests-indicator {
+      padding: 0.3rem 0.6rem;
+      font-size: 0.85rem;
+    }
+    
+    .request-count {
+      font-size: 0.75rem;
     }
   }
   
