@@ -1135,7 +1135,15 @@
                            pendingRequests.has(user.user_id) ? 'Cancel request' :
                            incomingRequests.has(user.user_id) ? 'Accept/Decline fellowship' : 'Add to fellowship'}
                   >
-                    🤝
+                    {#if fellowships.has(user.user_id)}
+                      ✓
+                    {:else if pendingRequests.has(user.user_id)}
+                      ⏳
+                    {:else if incomingRequests.has(user.user_id)}
+                      👋
+                    {:else}
+                      🤝
+                    {/if}
                   </button>
                 </div>
               {/if}
