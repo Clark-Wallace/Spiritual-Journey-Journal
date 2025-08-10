@@ -116,6 +116,7 @@
     
     // Remove from pending immediately to prevent duplicate actions
     const request = pendingRequests.find(r => r.request_id === requestId);
+    console.log('Responding to chat request:', { requestId, response, request });
     pendingRequests = pendingRequests.filter(r => r.request_id !== requestId);
     
     // Try RPC function first, fallback to direct update
@@ -156,15 +157,10 @@
     } else if (!error && data && data[0]) {
       const result = data[0];
       if (result.success) {
-        if (response === 'accepted') {
-          // Find the request to get user info
-          const request = pendingRequests.find(r => r.request_id === requestId);
-          if (request) {
-            onAcceptChat(request.from_user_id, request.from_user_name);
-          }
+        if (response === 'accepted' && request) {
+          // We already have the request from before we removed it
+          onAcceptChat(request.from_user_id, request.from_user_name);
         }
-        // Remove from pending requests
-        pendingRequests = pendingRequests.filter(r => r.request_id !== requestId);
       }
     } else if (error) {
       console.error('Error responding to chat request:', error);

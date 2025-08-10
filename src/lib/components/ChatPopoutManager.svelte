@@ -73,6 +73,7 @@
   }
   
   function handleAcceptChat(fromUserId: string, fromUserName: string) {
+    console.log('ChatPopoutManager: handleAcceptChat called', { fromUserId, fromUserName });
     openChat(fromUserId, fromUserName);
   }
   
