@@ -323,6 +323,19 @@
         <div class="detail-footer">
           <div class="detail-author">
             {selectedNote.is_anonymous ? 'Anonymous' : selectedNote.user_name}
+            {#if !selectedNote.is_anonymous && selectedNote.user_id !== $authStore?.id}
+              <button 
+                class="chat-btn"
+                on:click={() => {
+                  if (typeof window !== 'undefined' && (window as any).openPrivateChat) {
+                    (window as any).openPrivateChat(selectedNote.user_id, selectedNote.user_name);
+                  }
+                }}
+                title="Start private chat"
+              >
+                💬
+              </button>
+            {/if}
           </div>
           <div class="detail-date">
             {new Date(selectedNote.created_at).toLocaleString()}
@@ -768,6 +781,30 @@
     font-size: 0.9rem;
     opacity: 0.7;
     font-family: var(--font-secondary);
+  }
+  
+  .detail-author {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .detail-author .chat-btn {
+    padding: 0.25rem 0.5rem;
+    background: rgba(138, 43, 226, 0.2);
+    color: var(--text-divine);
+    border: 1px solid rgba(138, 43, 226, 0.3);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    opacity: 1;
+  }
+  
+  .detail-author .chat-btn:hover {
+    background: rgba(138, 43, 226, 0.3);
+    transform: scale(1.05);
+    box-shadow: 0 0 10px rgba(138, 43, 226, 0.4);
   }
   
   .detail-actions {

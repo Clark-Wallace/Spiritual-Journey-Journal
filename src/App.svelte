@@ -12,6 +12,9 @@
   import CommunityWall from './lib/components/CommunityWall.svelte';
   import TheFellowship from './lib/components/TheFellowship.svelte';
   import TheWay from './lib/components/TheWayIlluminated.svelte';
+  import ChatPopoutManager from './lib/components/ChatPopoutManager.svelte';
+  
+  let chatPopoutManager: ChatPopoutManager;
   
   onMount(async () => {
     await authStore.initialize();
@@ -22,6 +25,15 @@
         await journalEntries.loadEntries();
       }
     });
+    
+    // Make chat globally available
+    if (typeof window !== 'undefined') {
+      (window as any).openPrivateChat = (userId: string, userName: string) => {
+        if (chatPopoutManager) {
+          chatPopoutManager.openChat(userId, userName);
+        }
+      };
+    }
   });
   
   const verses = [
@@ -140,6 +152,9 @@
     </div>
   {/if}
 </main>
+
+<!-- Global chat popout manager - available everywhere -->
+<ChatPopoutManager bind:this={chatPopoutManager} />
 {/if}
 
 <style>

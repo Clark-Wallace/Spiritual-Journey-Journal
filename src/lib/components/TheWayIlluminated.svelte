@@ -6,7 +6,6 @@
   import VoiceRecorder from './VoiceRecorder.svelte';
   import FellowshipManager from './FellowshipManager.svelte';
   import FellowshipDebug from './FellowshipDebug.svelte';
-  import ChatPopoutManager from './ChatPopoutManager.svelte';
   
   let messages: any[] = [];
   let onlineUsers: any[] = [];
@@ -28,7 +27,6 @@
   let requestCount = 0;
   
   // Private messaging
-  let chatPopoutManager: ChatPopoutManager;
   let usersInCounsel: Set<string> = new Set(); // Track users in private chats
   
   // Chat rooms
@@ -775,8 +773,8 @@
       } else if (directResult.error.message?.includes('does not exist')) {
         // Table doesn't exist, open chat directly (fallback to old behavior)
         console.log('Chat requests table not found, opening chat directly');
-        if (chatPopoutManager) {
-          chatPopoutManager.openChat(userId, userName);
+        if (typeof window !== 'undefined' && (window as any).openPrivateChat) {
+          (window as any).openPrivateChat(userId, userName);
         }
         return;
       } else {
@@ -795,16 +793,16 @@
       console.error('Error sending chat request:', error);
       showTemporaryMessage(`Failed to send chat request - opening chat directly`);
       // Fallback to direct chat opening
-      if (chatPopoutManager) {
-        chatPopoutManager.openChat(userId, userName);
+      if (typeof window !== 'undefined' && (window as any).openPrivateChat) {
+        (window as any).openPrivateChat(userId, userName);
       }
     }
   }
   
   function acceptChatRequest(fromUserId: string, fromUserName: string) {
     console.log('Accepting chat from:', fromUserName, fromUserId);
-    if (chatPopoutManager) {
-      chatPopoutManager.openChat(fromUserId, fromUserName);
+    if (typeof window !== 'undefined' && (window as any).openPrivateChat) {
+      (window as any).openPrivateChat(fromUserId, fromUserName);
     }
   }
   
@@ -822,8 +820,8 @@
     console.log('Our chat request was accepted by:', actualUserName);
     showTemporaryMessage(`${actualUserName} accepted your chat request`);
     // Auto-open the chat for the sender
-    if (chatPopoutManager) {
-      chatPopoutManager.openChat(userId, actualUserName);
+    if (typeof window !== 'undefined' && (window as any).openPrivateChat) {
+      (window as any).openPrivateChat(userId, actualUserName);
     }
   }
   
@@ -1404,12 +1402,6 @@
 </div>
 
 <FellowshipManager bind:show={showFellowshipManager} />
-
-<!-- Pop-out chat windows manager -->
-<ChatPopoutManager 
-  bind:this={chatPopoutManager}
-  onCounselStatusChange={handleCounselStatusChange}
-/>
 
 {#if showDebug}
   <FellowshipDebug />

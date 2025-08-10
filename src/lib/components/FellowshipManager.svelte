@@ -427,6 +427,17 @@
                     </div>
                     <div class="request-actions">
                       <button 
+                        class="chat-request-btn"
+                        on:click={() => {
+                          if (typeof window !== 'undefined' && (window as any).openPrivateChat) {
+                            (window as any).openPrivateChat(request.from_user_id, request.from_user_name);
+                          }
+                        }}
+                        title="Start chat"
+                      >
+                        💬
+                      </button>
+                      <button 
                         class="accept-btn"
                         on:click={() => acceptRequest(request.request_id, request.from_user_id)}
                       >
@@ -495,13 +506,26 @@
                     <span class="fellow-icon">👤</span>
                     <span class="fellow-name">{fellow.fellow_name}</span>
                   </div>
-                  <button 
-                    class="remove-btn"
-                    on:click={() => removeFromFellowship(fellow.fellow_id)}
-                    title="Remove from fellowship"
-                  >
-                    ✕
-                  </button>
+                  <div class="fellow-actions">
+                    <button 
+                      class="chat-btn"
+                      on:click={() => {
+                        if (typeof window !== 'undefined' && (window as any).openPrivateChat) {
+                          (window as any).openPrivateChat(fellow.fellow_id, fellow.fellow_name);
+                        }
+                      }}
+                      title="Start private chat"
+                    >
+                      💬
+                    </button>
+                    <button 
+                      class="remove-btn"
+                      on:click={() => removeFromFellowship(fellow.fellow_id)}
+                      title="Remove from fellowship"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
               {/each}
             {/if}
@@ -688,6 +712,24 @@
     gap: 0.5rem;
   }
   
+  .chat-request-btn {
+    padding: 0.4rem 0.8rem;
+    background: rgba(138, 43, 226, 0.2);
+    color: var(--text-divine);
+    border: 1px solid rgba(138, 43, 226, 0.3);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+  
+  .chat-request-btn:hover {
+    background: rgba(138, 43, 226, 0.3);
+    transform: scale(1.05);
+    box-shadow: 0 0 10px rgba(138, 43, 226, 0.4);
+  }
+  
   .accept-btn, .decline-btn {
     padding: 0.4rem 0.8rem;
     border-radius: 6px;
@@ -843,6 +885,29 @@
   .fellow-name {
     color: var(--text-light);
     font-size: 1rem;
+  }
+  
+  .fellow-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  
+  .chat-btn {
+    padding: 0.25rem 0.5rem;
+    background: rgba(138, 43, 226, 0.2);
+    color: var(--text-divine);
+    border: 1px solid rgba(138, 43, 226, 0.3);
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .chat-btn:hover {
+    background: rgba(138, 43, 226, 0.3);
+    transform: scale(1.1);
+    box-shadow: 0 0 10px rgba(138, 43, 226, 0.4);
   }
   
   .remove-btn {

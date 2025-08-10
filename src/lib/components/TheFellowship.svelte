@@ -639,13 +639,26 @@
                   Fellowship since {formatDate(member.joined)}
                 </div>
               </div>
-              <button 
-                class="remove-btn"
-                on:click={() => removeFellowship(member.id)}
-                title="Remove from fellowship"
-              >
-                ✕
-              </button>
+              <div class="member-actions">
+                <button 
+                  class="chat-btn"
+                  on:click={() => {
+                    if (typeof window !== 'undefined' && (window as any).openPrivateChat) {
+                      (window as any).openPrivateChat(member.id, member.name);
+                    }
+                  }}
+                  title="Start private chat"
+                >
+                  💬
+                </button>
+                <button 
+                  class="remove-btn"
+                  on:click={() => removeFellowship(member.id)}
+                  title="Remove from fellowship"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           {/each}
         {/if}
@@ -1178,6 +1191,29 @@
   
   .member-info {
     flex: 1;
+  }
+  
+  .member-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  
+  .chat-btn {
+    padding: 0.4rem 0.8rem;
+    background: rgba(138, 43, 226, 0.2);
+    color: var(--text-divine);
+    border: 1px solid rgba(138, 43, 226, 0.3);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .chat-btn:hover {
+    background: rgba(138, 43, 226, 0.3);
+    transform: scale(1.05);
+    box-shadow: 0 0 10px rgba(138, 43, 226, 0.4);
   }
   
   .member-name {
