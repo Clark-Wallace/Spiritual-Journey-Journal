@@ -19,6 +19,13 @@
   $: if (messages.length > 0) {
     console.log('First message:', messages[0]);
     console.log('Last message:', messages[messages.length - 1]);
+    // Log recent messages
+    const today = new Date().toDateString();
+    const todaysMessages = messages.filter(m => new Date(m.created_at).toDateString() === today);
+    console.log(`Today's messages: ${todaysMessages.length} out of ${messages.length} total`);
+    if (todaysMessages.length > 0) {
+      console.log('Sample today message:', todaysMessages[0]);
+    }
   }
   let subscription: any;
   let presenceSubscription: any;
@@ -122,7 +129,16 @@
       }
     } else if (data) {
       console.log('RPC succeeded, got data:', data);
-      data = data.reverse();
+      // Check the order of messages
+      if (data.length > 1) {
+        const firstDate = new Date(data[0].created_at).getTime();
+        const lastDate = new Date(data[data.length - 1].created_at).getTime();
+        console.log('Message order - First:', new Date(data[0].created_at).toISOString(), 'Last:', new Date(data[data.length - 1].created_at).toISOString());
+        if (firstDate > lastDate) {
+          console.log('Messages are in descending order, reversing...');
+          data = data.reverse();
+        }
+      }
     } else if (error) {
       console.error('RPC error:', error);
     }
@@ -130,12 +146,16 @@
     if (data) {
       console.log('Loaded', data.length, 'messages');
       console.log('First few messages:', data.slice(0, 3));
+      console.log('Last few messages:', data.slice(-3));
       // Force reactivity with spread operator
       messages = [...data];
       console.log('Messages array after assignment:', messages.length);
       // Wait for DOM update
       await tick();
-      scrollToBottom();
+      // Force scroll after a longer delay to ensure DOM is ready
+      setTimeout(() => {
+        scrollToBottom();
+      }, 200);
     } else {
       console.log('No messages loaded');
       messages = [];
@@ -275,6 +295,7 @@
   function scrollToBottom() {
     setTimeout(() => {
       if (messagesContainer) {
+        console.log('Scrolling to bottom. Container height:', messagesContainer.scrollHeight);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
       }
     }, 100);
@@ -439,6 +460,15 @@
   {#if !isMinimized}
     <div class="chat-body">
       <div class="messages-container" bind:this={messagesContainer}>
+        <!-- Debug: Scroll to bottom button -->
+        <button 
+          class="scroll-bottom-btn"
+          on:click={scrollToBottom}
+          style="position: sticky; top: 0; z-index: 10; background: var(--primary-gold); color: black; padding: 0.5rem; border-radius: 5px; margin-bottom: 0.5rem;"
+        >
+          Scroll to Bottom (Debug: {messages.length} messages)
+        </button>
+        
         {#if loading}
           <div class="loading">Loading messages...</div>
         {:else if messages.length === 0}
@@ -649,12 +679,13 @@
   .messages-container {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 1rem;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
     min-height: 200px;
-    height: 100%;
+    max-height: calc(100% - 70px); /* Account for input area */
   }
   
   .loading, .no-messages {
