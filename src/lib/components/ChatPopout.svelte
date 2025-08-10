@@ -314,6 +314,8 @@
       sendMessage();
     }
   }
+  
+  $: isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
 </script>
 
 <svelte:window 
@@ -322,8 +324,6 @@
   on:touchmove={onMouseMove}
   on:touchend={onMouseUp}
 />
-
-{@const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768}
 
 <div 
   class="chat-popout"
