@@ -120,10 +120,9 @@
       }
     } else if (data) {
       console.log('RPC succeeded, got data:', data);
-      // Always reverse the data since RPC returns newest first (descending order)
-      // We want oldest at top, newest at bottom for chat UI
-      data = data.reverse();
-      console.log('Reversed message order for chat display');
+      // RPC function already returns messages in ASC order (oldest first)
+      // No need to reverse
+      console.log('RPC data is already in chronological order (oldest to newest)');
     } else if (error) {
       console.error('RPC error:', error);
     }
@@ -176,7 +175,7 @@
       newMessage = '';
       // Immediately add to local messages if not received via subscription
       if (!messages.find(m => m.message_id === data.id)) {
-        messages = [...messages, {
+        const newMsg = {
           message_id: data.id,
           from_user_id: data.from_user_id,
           from_user_name: $userInfo?.name || 'You',
@@ -186,7 +185,10 @@
           is_read: data.is_read,
           created_at: data.created_at,
           is_mine: true
-        }];
+        };
+        // Add to end of array for chronological order
+        messages = [...messages, newMsg];
+        console.log('Added new message to end of array');
         scrollToBottom();
       }
     }
