@@ -242,6 +242,13 @@
   // Window management
   function startDrag(e: MouseEvent | TouchEvent) {
     if (isResizing) return; // Only prevent dragging when resizing, not when minimized
+    
+    // Don't start dragging if clicking on buttons
+    const target = e.target as HTMLElement;
+    if (target.closest('.control-btn')) {
+      return;
+    }
+    
     isDragging = true;
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -357,7 +364,8 @@
       </button>
       <button 
         class="control-btn close"
-        on:click={onClose}
+        on:click|stopPropagation={onClose}
+        on:touchend|stopPropagation|preventDefault={onClose}
         title="Close chat"
       >
         ✕
@@ -530,6 +538,8 @@
     justify-content: center;
     font-size: 0.9rem;
     transition: all 0.2s;
+    position: relative;
+    z-index: 10;
   }
   
   .control-btn:hover {
@@ -681,6 +691,12 @@
       width: calc(100vw - 2rem) !important;
       max-width: 400px;
       position: fixed !important;
+    }
+    
+    .control-btn {
+      width: 36px !important;
+      height: 36px !important;
+      font-size: 1.1rem !important;
     }
     
     .chat-popout.mobile:not(.minimized):not(.dragging) {

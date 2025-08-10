@@ -81,11 +81,7 @@
     openChat(userId, userName);
   }
   
-  // Expose openChat method to parent
-  onMount(() => {
-    // Make openChat available globally if needed
-    (window as any).openPrivateChat = openChat;
-  });
+  // Note: openChat is exposed globally via App.svelte, not here
 </script>
 
 <!-- Chat request notifications -->

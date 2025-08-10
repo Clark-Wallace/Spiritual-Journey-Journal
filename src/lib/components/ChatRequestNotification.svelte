@@ -114,6 +114,10 @@
     const user = await getCurrentUser();
     if (!user) return;
     
+    // Remove from pending immediately to prevent duplicate actions
+    const request = pendingRequests.find(r => r.request_id === requestId);
+    pendingRequests = pendingRequests.filter(r => r.request_id !== requestId);
+    
     // Try RPC function first, fallback to direct update
     let { data, error } = await supabase
       .rpc('respond_to_chat_request', {
@@ -139,13 +143,9 @@
       
       if (!updateResult.error && updateResult.data) {
         // Handle the response
-        if (response === 'accepted') {
-          const request = pendingRequests.find(r => r.request_id === requestId);
-          if (request) {
-            onAcceptChat(request.from_user_id, request.from_user_name);
-          }
+        if (response === 'accepted' && request) {
+          onAcceptChat(request.from_user_id, request.from_user_name);
         }
-        pendingRequests = pendingRequests.filter(r => r.request_id !== requestId);
       } else if (updateResult.error && !updateResult.error.message?.includes('does not exist')) {
         console.error('Error responding to chat request:', updateResult.error);
       }
