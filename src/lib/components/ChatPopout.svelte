@@ -30,8 +30,9 @@
   let resizeStart = { width: 350, height: 450, x: 0, y: 0 };
   let windowElement: HTMLDivElement;
   
-  onMount(() => {
-    loadMessages();
+  onMount(async () => {
+    // Always reload messages on mount to get latest
+    await loadMessages();
     setupRealtimeSubscription();
     setupChatPresence();
   });
@@ -60,6 +61,8 @@
     loading = true;
     const user = await getCurrentUser();
     if (!user) return;
+    
+    console.log('Loading messages between', user.id, 'and', recipientId);
     
     // Try RPC function first, fallback to direct query
     let { data, error } = await supabase
@@ -103,8 +106,12 @@
     }
     
     if (data) {
+      console.log('Loaded', data.length, 'messages');
       messages = data;
       scrollToBottom();
+    } else {
+      console.log('No messages loaded');
+      messages = [];
     }
     
     loading = false;

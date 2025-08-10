@@ -90,36 +90,36 @@
       return;
     }
     
-    // Subscribe to presence channel for all users
+    // Load initial online users and subscribe to changes
+    loadOnlineUsers();
+    
+    // Subscribe to user_presence table changes
     presenceSubscription = supabase
       .channel('fellowship-presence')
-      .on('presence', { event: 'sync' }, () => {
-        const state = presenceSubscription.presenceState();
-        const newOnlineUsers = new Set<string>();
-        
-        Object.keys(state).forEach(key => {
-          const presences = state[key];
-          if (presences && presences.length > 0) {
-            presences.forEach((presence: any) => {
-              if (presence.user_id) {
-                newOnlineUsers.add(presence.user_id);
-              }
-            });
-          }
-        });
-        
-        onlineUsers = newOnlineUsers;
-        console.log('Online users updated:', Array.from(onlineUsers));
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          // Track our own presence
-          await presenceSubscription.track({
-            user_id: user.id,
-            online_at: new Date().toISOString(),
-          });
-        }
-      });
+      .on('postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'user_presence'
+        },
+        () => loadOnlineUsers()
+      )
+      .subscribe();
+  }
+  
+  async function loadOnlineUsers() {
+    // Consider users online if they were seen in the last 2 minutes
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    
+    const { data, error } = await supabase
+      .from('user_presence')
+      .select('user_id')
+      .gte('last_seen', twoMinutesAgo);
+    
+    if (!error && data) {
+      onlineUsers = new Set(data.map(u => u.user_id));
+      console.log('Fellowship online users:', Array.from(onlineUsers));
+    }
   }
   
   async function loadFellowships() {
@@ -393,6 +393,65 @@
     return date.toLocaleDateString();
   }
   
+  async function startPrivateChat(userId: string, userName: string) {
+    const user = await authStore.getUser();
+    if (!user) return;
+    
+    console.log('Sending chat request to:', userName, userId);
+    
+    // Try RPC function first, fallback to direct insert
+    let { data, error } = await supabase
+      .rpc('send_chat_request', {
+        p_from_user_id: user.id,
+        p_to_user_id: userId,
+        p_from_user_name: user.user_metadata?.name || user.email?.split('@')[0] || 'Anonymous'
+      });
+    
+    // If RPC function doesn't exist, use direct approach
+    if (error && (error.message?.includes('function') || error?.code === '42883')) {
+      console.log('Chat request RPC not found, using direct approach');
+      
+      // Check if chat_requests table exists by trying to insert
+      const directResult = await supabase
+        .from('chat_requests')
+        .insert({
+          from_user_id: user.id,
+          to_user_id: userId,
+          from_user_name: user.user_metadata?.name || user.email?.split('@')[0] || 'Anonymous',
+          status: 'pending',
+          expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString() // 5 minutes expiry
+        })
+        .select()
+        .single();
+      
+      if (!directResult.error) {
+        alert(`Chat request sent to ${userName}`);
+        return; // Success with direct insert
+      } else if (directResult.error.message?.includes('does not exist')) {
+        // Table doesn't exist, open chat directly (fallback to old behavior)
+        console.log('Chat requests table not found, opening chat directly');
+        if (typeof window !== 'undefined' && (window as any).openPrivateChat) {
+          (window as any).openPrivateChat(userId, userName);
+        }
+        return;
+      } else {
+        error = directResult.error;
+      }
+    }
+    
+    if (!error && data && data[0]) {
+      const result = data[0];
+      if (result.status === 'sent') {
+        alert(`Chat request sent to ${userName}`);
+      } else if (result.status === 'exists') {
+        alert(`Chat request already pending with ${userName}`);
+      }
+    } else if (error) {
+      console.error('Error sending chat request:', error);
+      alert('Failed to send chat request');
+    }
+  }
+  
   async function removeFromFellowship(fellowId: string) {
     const user = await authStore.getUser();
     if (!user) return;
@@ -480,11 +539,7 @@
                     <div class="request-actions">
                       <button 
                         class="chat-request-btn"
-                        on:click={() => {
-                          if (typeof window !== 'undefined' && (window as any).openPrivateChat) {
-                            (window as any).openPrivateChat(request.from_user_id, request.from_user_name);
-                          }
-                        }}
+                        on:click={() => startPrivateChat(request.from_user_id, request.from_user_name)}
                         title="Start chat"
                       >
                         💬
@@ -566,12 +621,7 @@
                   <div class="fellow-actions">
                     <button 
                       class="chat-btn"
-                      on:click={() => {
-                        console.log('Opening chat with fellow:', { fellow_id: fellow.fellow_id, fellow_name: fellow.fellow_name });
-                        if (typeof window !== 'undefined' && (window as any).openPrivateChat) {
-                          (window as any).openPrivateChat(fellow.fellow_id, fellow.fellow_name);
-                        }
-                      }}
+                      on:click={() => startPrivateChat(fellow.fellow_id, fellow.fellow_name)}
                       title="Start private chat"
                     >
                       💬

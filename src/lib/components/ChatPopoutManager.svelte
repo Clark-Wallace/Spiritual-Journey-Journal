@@ -101,13 +101,15 @@
 
 <!-- Render all chat windows -->
 {#each chatWindows as window (window.id)}
-  <ChatPopout
-    recipientId={window.recipientId}
-    recipientName={window.recipientName}
-    onClose={() => closeChat(window.id)}
-    zIndex={window.zIndex}
-    initialPosition={window.position}
-  />
+  {#key `${window.id}-${window.recipientId}`}
+    <ChatPopout
+      recipientId={window.recipientId}
+      recipientName={window.recipientName}
+      onClose={() => closeChat(window.id)}
+      zIndex={window.zIndex}
+      initialPosition={window.position}
+    />
+  {/key}
 {/each}
 
 <style>
