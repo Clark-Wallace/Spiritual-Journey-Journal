@@ -14,18 +14,9 @@
   let loading = false;
   let messagesContainer: HTMLDivElement;
   
-  // Reactive statement to debug messages
-  $: console.log('Messages array updated:', messages.length, 'messages');
+  // Reactive statement to track message updates
   $: if (messages.length > 0) {
-    console.log('First message:', messages[0]);
-    console.log('Last message:', messages[messages.length - 1]);
-    // Log recent messages
-    const today = new Date().toDateString();
-    const todaysMessages = messages.filter(m => new Date(m.created_at).toDateString() === today);
-    console.log(`Today's messages: ${todaysMessages.length} out of ${messages.length} total`);
-    if (todaysMessages.length > 0) {
-      console.log('Sample today message:', todaysMessages[0]);
-    }
+    console.log(`Chat loaded: ${messages.length} messages`);
   }
   let subscription: any;
   let presenceSubscription: any;
@@ -96,7 +87,7 @@
         .from('private_messages')
         .select('*')
         .or(`and(from_user_id.eq.${user.id},to_user_id.eq.${recipientId}),and(from_user_id.eq.${recipientId},to_user_id.eq.${user.id})`)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: true }) // Changed to ascending for oldest first
         .limit(50);
       
       console.log('Direct query result:', result);
@@ -116,7 +107,7 @@
             created_at: msg.created_at,
             is_mine: isMine
           };
-        }).reverse();
+        }); // Removed reverse since we're already in ascending order
         
         await supabase
           .from('private_messages')
@@ -129,16 +120,10 @@
       }
     } else if (data) {
       console.log('RPC succeeded, got data:', data);
-      // Check the order of messages
-      if (data.length > 1) {
-        const firstDate = new Date(data[0].created_at).getTime();
-        const lastDate = new Date(data[data.length - 1].created_at).getTime();
-        console.log('Message order - First:', new Date(data[0].created_at).toISOString(), 'Last:', new Date(data[data.length - 1].created_at).toISOString());
-        if (firstDate > lastDate) {
-          console.log('Messages are in descending order, reversing...');
-          data = data.reverse();
-        }
-      }
+      // Always reverse the data since RPC returns newest first (descending order)
+      // We want oldest at top, newest at bottom for chat UI
+      data = data.reverse();
+      console.log('Reversed message order for chat display');
     } else if (error) {
       console.error('RPC error:', error);
     }
@@ -295,7 +280,6 @@
   function scrollToBottom() {
     setTimeout(() => {
       if (messagesContainer) {
-        console.log('Scrolling to bottom. Container height:', messagesContainer.scrollHeight);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
       }
     }, 100);
@@ -460,15 +444,6 @@
   {#if !isMinimized}
     <div class="chat-body">
       <div class="messages-container" bind:this={messagesContainer}>
-        <!-- Debug: Scroll to bottom button -->
-        <button 
-          class="scroll-bottom-btn"
-          on:click={scrollToBottom}
-          style="position: sticky; top: 0; z-index: 10; background: var(--primary-gold); color: black; padding: 0.5rem; border-radius: 5px; margin-bottom: 0.5rem;"
-        >
-          Scroll to Bottom (Debug: {messages.length} messages)
-        </button>
-        
         {#if loading}
           <div class="loading">Loading messages...</div>
         {:else if messages.length === 0}
