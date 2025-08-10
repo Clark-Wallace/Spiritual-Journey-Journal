@@ -5,7 +5,7 @@ Spiritual Journey is a comprehensive faith-based platform built with Svelte, Typ
 
 **Live URL**: https://www.spiritualjourney.app  
 **GitHub**: https://github.com/Clark-Wallace/Spiritual-Journey-Journal  
-**Status**: Production (Stable at commit c65bc7f)
+**Status**: Production (Stable - Last updated: January 2025)
 
 ## Current Tech Stack
 - **Frontend**: Svelte 5.35.5, TypeScript 5.8.3, Vite 7.0.4
@@ -53,18 +53,23 @@ Spiritual Journey is a comprehensive faith-based platform built with Svelte, Typ
 - **Voice Input**: Desktop-only voice messages
 - **Mobile Optimized**: Full-screen responsive experience
 - **Mobile Sidebar**: Slide-in user list with fellowship/chat actions
-- **Private Messaging** (Fellowship members only):
-  - Chat request system with accept/decline flow
-  - 30-second timeout for unanswered requests
-  - Real-time presence indicators (Online/Offline status)
-  - System notifications when users leave conversations
-  - Bidirectional chat opening when requests accepted
-  - Graceful fallback when database functions don't exist
+- **Private Messaging** (FULLY IMPLEMENTED):
+  - Pop-out chat windows with drag and resize functionality
+  - Mobile-optimized chat interface with touch support
+  - Chat request system with 5-minute expiry
+  - Real-time message delivery and read receipts
+  - Online presence indicators using user_presence table
+  - Message history with proper chronological ordering
+  - Automatic scrolling to newest messages
+  - Fellowship-only chat access restriction
+  - Global chat management across entire app
 
 ### 4. Fellowship System (Private Circle)
 - **Fellowship Connections**: Friend system for spiritual accountability
 - **Request Management**: Send, accept, decline fellowship requests
 - **Real-time Notifications**: Badge shows pending requests
+- **Online Status**: Live presence indicators for fellowship members
+- **Chat Integration**: Direct chat buttons in Fellowship Manager
 - **Fellowship Feed**: Private posts visible only to fellowship members
 - **Direct Posting**: Enhanced post creator with character counter (1000 max)
 - **Journal Sharing**: Simplified format - shows mood emoji as "feeling 😊"
@@ -73,7 +78,6 @@ Spiritual Journey is a comprehensive faith-based platform built with Svelte, Typ
 - **Encouragements**: Inline comment system with real-time updates
 - **Member Management**: View profiles, remove from fellowship
 - **Privacy**: All fellowship posts marked with is_fellowship_only = true
-- **Debug Logging**: Console logs for troubleshooting reactions/encouragements
 
 ### 5. AI Scripture Guidance
 - **Dual Mode**: AI-powered (Claude) with keyword fallback
@@ -130,6 +134,13 @@ accept_fellowship_request(p_request_id UUID, p_user_id UUID)
 decline_fellowship_request(p_request_id UUID, p_user_id UUID)
 cancel_fellowship_request(p_from_user_id UUID, p_to_user_id UUID)
 upsert_user_profile(p_user_id UUID, p_display_name TEXT)
+remove_fellowship(p_user_id UUID, p_fellow_id UUID)
+
+-- Chat system functions
+get_conversation_messages(p_user_id UUID, p_other_user_id UUID, p_limit INT, p_offset INT)
+send_chat_request(p_from_user_id UUID, p_to_user_id UUID, p_from_user_name TEXT)
+respond_to_chat_request(p_request_id UUID, p_user_id UUID, p_response TEXT)
+get_pending_chat_requests(p_user_id UUID)
 
 -- Fellowship feed function (often missing - causes 404/400 errors)
 get_fellowship_feed(for_user_id UUID) -- See database/ADD_FELLOWSHIP_ONLY_TO_POSTS.sql

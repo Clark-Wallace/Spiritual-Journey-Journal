@@ -55,11 +55,14 @@ Features:
 - Per-room presence tracking
 - Mobile responsive full-screen experience with user sidebar
 - **Private Messaging** (Fellowship members only):
-  - Chat request system with accept/decline notifications
-  - 30-second timeout for unanswered requests
-  - Real-time presence indicators (Online/Offline)
-  - System notifications when users leave conversations
-  - Automatic chat opening for both parties when accepted
+  - Pop-out chat windows with drag and resize functionality
+  - Mobile-optimized chat interface with touch support
+  - Chat request system with 5-minute expiry
+  - Real-time message delivery with chronological ordering
+  - Online presence indicators using user_presence table
+  - Message history properly displayed (oldest to newest)
+  - Automatic scrolling to latest messages
+  - Global chat management across entire app
 
 ### ✨ AI-Powered Scripture Guidance
 - **Two Modes**: 
@@ -166,10 +169,10 @@ Run these SQL scripts in your Supabase SQL editor in order:
    - `database/ADD_ROOM_COLUMN_TO_USER_PRESENCE.sql`
    - `database/ADD_PRAYER_COLUMN_TO_JOURNAL.sql`
    - `database/CREATE_FELLOWSHIP_FEED_FUNCTION.sql` or `database/FELLOWSHIP_FEED_EMPTY_SAFE.sql`
-7. **Private Messaging** (Optional - app works without these):
+7. **Private Messaging** (Recommended for full functionality):
    - `database/SIMPLE_PRIVATE_MESSAGES.sql` - Direct messaging table
    - `database/CREATE_CHAT_REQUESTS_SAFE.sql` - Chat request system
-   - `database/FIX_RPC_FUNCTIONS.sql` - Fix column ambiguity issues
+   - `database/FIX_RPC_FUNCTIONS.sql` - Fix column ambiguity and message ordering
 
 ## 🚢 Deployment
 
