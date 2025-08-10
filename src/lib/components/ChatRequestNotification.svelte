@@ -39,8 +39,6 @@
     
     // If RPC function doesn't exist, use direct query
     if (error && (error.message?.includes('function') || error?.code === '42883')) {
-      console.log('Chat requests RPC not found, using direct query');
-      
       const directResult = await supabase
         .from('chat_requests')
         .select('id, from_user_id, from_user_name, created_at, expires_at')
@@ -116,7 +114,6 @@
     
     // Remove from pending immediately to prevent duplicate actions
     const request = pendingRequests.find(r => r.request_id === requestId);
-    console.log('Responding to chat request:', { requestId, response, request });
     pendingRequests = pendingRequests.filter(r => r.request_id !== requestId);
     
     // Try RPC function first, fallback to direct update
@@ -129,8 +126,6 @@
     
     // If RPC function doesn't exist, use direct update
     if (error && (error.message?.includes('function') || error?.code === '42883')) {
-      console.log('RPC function not found, using direct update');
-      
       const updateResult = await supabase
         .from('chat_requests')
         .update({ 

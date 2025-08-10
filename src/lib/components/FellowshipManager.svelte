@@ -397,8 +397,6 @@
     const user = await authStore.getUser();
     if (!user) return;
     
-    console.log('Sending chat request to:', userName, userId);
-    
     // Try RPC function first, fallback to direct insert
     let { data, error } = await supabase
       .rpc('send_chat_request', {
@@ -409,8 +407,6 @@
     
     // If RPC function doesn't exist, use direct approach
     if (error && (error.message?.includes('function') || error?.code === '42883')) {
-      console.log('Chat request RPC not found, using direct approach');
-      
       // Check if chat_requests table exists by trying to insert
       const directResult = await supabase
         .from('chat_requests')
@@ -429,7 +425,6 @@
         return; // Success with direct insert
       } else if (directResult.error.message?.includes('does not exist')) {
         // Table doesn't exist, open chat directly (fallback to old behavior)
-        console.log('Chat requests table not found, opening chat directly');
         if (typeof window !== 'undefined' && (window as any).openPrivateChat) {
           (window as any).openPrivateChat(userId, userName);
         }

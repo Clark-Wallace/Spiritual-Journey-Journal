@@ -14,10 +14,7 @@
   let loading = false;
   let messagesContainer: HTMLDivElement;
   
-  // Reactive statement to track message updates
-  $: if (messages.length > 0) {
-    console.log(`Chat loaded: ${messages.length} messages`);
-  }
+  // Track message updates for reactivity
   let subscription: any;
   let presenceSubscription: any;
   let otherUserPresent = true;
@@ -70,8 +67,6 @@
       return;
     }
     
-    console.log('Loading messages between', user.id, 'and', recipientId);
-    
     // Try RPC function first, fallback to direct query
     let { data, error } = await supabase
       .rpc('get_conversation_messages', {
@@ -82,7 +77,7 @@
       });
     
     if (error && (error.message?.includes('function') || error?.code === '42883' || error?.code === '42702')) {
-      console.log('RPC failed, using direct query. Error:', error);
+      // Fallback to direct query if RPC doesn't exist
       const result = await supabase
         .from('private_messages')
         .select('*')
@@ -90,10 +85,7 @@
         .order('created_at', { ascending: true }) // Changed to ascending for oldest first
         .limit(50);
       
-      console.log('Direct query result:', result);
-      
       if (!result.error && result.data) {
-        console.log('Direct query raw data sample:', result.data[0]);
         data = result.data.map(msg => {
           const isMine = msg.from_user_id === user.id;
           return {
@@ -119,21 +111,15 @@
         console.error('Error loading messages:', result.error);
       }
     } else if (data) {
-      console.log('RPC succeeded, got data:', data);
       // RPC function already returns messages in ASC order (oldest first)
       // No need to reverse
-      console.log('RPC data is already in chronological order (oldest to newest)');
     } else if (error) {
-      console.error('RPC error:', error);
+      console.error('Error loading messages:', error);
     }
     
     if (data) {
-      console.log('Loaded', data.length, 'messages');
-      console.log('First few messages:', data.slice(0, 3));
-      console.log('Last few messages:', data.slice(-3));
       // Force reactivity with spread operator
       messages = [...data];
-      console.log('Messages array after assignment:', messages.length);
       // Wait for DOM update
       await tick();
       // Force scroll after a longer delay to ensure DOM is ready
@@ -141,7 +127,6 @@
         scrollToBottom();
       }, 200);
     } else {
-      console.log('No messages loaded');
       messages = [];
     }
     
@@ -156,8 +141,6 @@
     const user = await getCurrentUser();
     if (!user) return;
     
-    console.log('Sending message:', { from: user.id, to: recipientId, message: newMessage.trim() });
-    
     const { data, error } = await supabase
       .from('private_messages')
       .insert({
@@ -171,7 +154,6 @@
     if (error) {
       console.error('Error sending message:', error);
     } else {
-      console.log('Message sent:', data);
       newMessage = '';
       // Immediately add to local messages if not received via subscription
       if (!messages.find(m => m.message_id === data.id)) {
@@ -188,7 +170,6 @@
         };
         // Add to end of array for chronological order
         messages = [...messages, newMsg];
-        console.log('Added new message to end of array');
         scrollToBottom();
       }
     }

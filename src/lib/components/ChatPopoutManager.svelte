@@ -24,8 +24,6 @@
   }
   
   export function openChat(recipientId: string, recipientName: string) {
-    console.log('ChatPopoutManager openChat called:', { recipientId, recipientName });
-    
     // Validate inputs
     if (!recipientId || !recipientName) {
       console.error('Invalid recipient data:', { recipientId, recipientName });
@@ -81,7 +79,6 @@
   }
   
   function handleAcceptChat(fromUserId: string, fromUserName: string) {
-    console.log('ChatPopoutManager: handleAcceptChat called', { fromUserId, fromUserName });
     openChat(fromUserId, fromUserName);
   }
   
