@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { supabase, getCurrentUser } from '../supabase';
   import { authStore, userInfo } from '../stores/auth';
   
@@ -13,6 +13,13 @@
   let newMessage = '';
   let loading = false;
   let messagesContainer: HTMLDivElement;
+  
+  // Reactive statement to debug messages
+  $: console.log('Messages array updated:', messages.length, 'messages');
+  $: if (messages.length > 0) {
+    console.log('First message:', messages[0]);
+    console.log('Last message:', messages[messages.length - 1]);
+  }
   let subscription: any;
   let presenceSubscription: any;
   let otherUserPresent = true;
@@ -60,7 +67,10 @@
   async function loadMessages() {
     loading = true;
     const user = await getCurrentUser();
-    if (!user) return;
+    if (!user) {
+      loading = false;
+      return;
+    }
     
     console.log('Loading messages between', user.id, 'and', recipientId);
     
@@ -85,17 +95,21 @@
       console.log('Direct query result:', result);
       
       if (!result.error && result.data) {
-        data = result.data.map(msg => ({
-          message_id: msg.id,
-          from_user_id: msg.from_user_id,
-          from_user_name: msg.from_user_id === user.id ? ($userInfo?.name || 'You') : recipientName,
-          to_user_id: msg.to_user_id,
-          to_user_name: msg.to_user_id === user.id ? ($userInfo?.name || 'You') : recipientName,
-          message: msg.message,
-          is_read: msg.is_read,
-          created_at: msg.created_at,
-          is_mine: msg.from_user_id === user.id
-        })).reverse();
+        console.log('Direct query raw data sample:', result.data[0]);
+        data = result.data.map(msg => {
+          const isMine = msg.from_user_id === user.id;
+          return {
+            message_id: msg.id,
+            from_user_id: msg.from_user_id,
+            from_user_name: isMine ? ($userInfo?.name || 'You') : recipientName,
+            to_user_id: msg.to_user_id,
+            to_user_name: msg.to_user_id === user.id ? ($userInfo?.name || 'You') : recipientName,
+            message: msg.message,
+            is_read: msg.is_read,
+            created_at: msg.created_at,
+            is_mine: isMine
+          };
+        }).reverse();
         
         await supabase
           .from('private_messages')
@@ -115,7 +129,12 @@
     
     if (data) {
       console.log('Loaded', data.length, 'messages');
-      messages = data;
+      console.log('First few messages:', data.slice(0, 3));
+      // Force reactivity with spread operator
+      messages = [...data];
+      console.log('Messages array after assignment:', messages.length);
+      // Wait for DOM update
+      await tick();
       scrollToBottom();
     } else {
       console.log('No messages loaded');
@@ -123,6 +142,8 @@
     }
     
     loading = false;
+    // Force another tick to ensure UI updates
+    await tick();
   }
   
   async function sendMessage() {
@@ -176,24 +197,28 @@
         event: 'INSERT',
         schema: 'public',
         table: 'private_messages'
-      }, (payload) => {
+      }, async (payload) => {
         const msg = payload.new;
         if ((msg.from_user_id === user.id && msg.to_user_id === recipientId) ||
             (msg.from_user_id === recipientId && msg.to_user_id === user.id)) {
           
-          messages = [...messages, {
-            message_id: msg.id,
-            from_user_id: msg.from_user_id,
-            from_user_name: msg.from_user_id === user.id ? ($userInfo?.name || 'You') : recipientName,
-            to_user_id: msg.to_user_id,
-            to_user_name: msg.to_user_id === user.id ? ($userInfo?.name || 'You') : recipientName,
-            message: msg.message,
-            is_read: msg.is_read,
-            created_at: msg.created_at,
-            is_mine: msg.from_user_id === user.id
-          }];
-          
-          scrollToBottom();
+          // Check if message already exists
+          if (!messages.find(m => m.message_id === msg.id)) {
+            messages = [...messages, {
+              message_id: msg.id,
+              from_user_id: msg.from_user_id,
+              from_user_name: msg.from_user_id === user.id ? ($userInfo?.name || 'You') : recipientName,
+              to_user_id: msg.to_user_id,
+              to_user_name: msg.to_user_id === user.id ? ($userInfo?.name || 'You') : recipientName,
+              message: msg.message,
+              is_read: msg.is_read,
+              created_at: msg.created_at,
+              is_mine: msg.from_user_id === user.id
+            }];
+            
+            await tick();
+            scrollToBottom();
+          }
           
           if (msg.to_user_id === user.id && !msg.is_read) {
             markAsRead(msg.id);
@@ -359,6 +384,7 @@
     }
   }
   
+  let isMobile = false;
   $: isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
 </script>
 
@@ -421,12 +447,17 @@
             <p>Say hello to start the conversation!</p>
           </div>
         {:else}
-          {#each messages as message}
+          {#each messages as message (message.message_id)}
             <div class="message {message.is_mine ? 'mine' : 'theirs'}">
               <div class="message-bubble">
                 <div class="message-text">{message.message}</div>
                 <div class="message-time">{formatTime(message.created_at)}</div>
               </div>
+            </div>
+          {:else}
+            <div class="no-messages">
+              <p>Messages loaded but not displaying</p>
+              <p>Debug: {messages.length} messages in array</p>
             </div>
           {/each}
         {/if}
@@ -594,6 +625,8 @@
     flex-direction: column;
     flex: 1;
     min-height: 0;
+    height: calc(100% - 60px); /* Account for header */
+    overflow: hidden;
   }
   
   .resize-handle {
@@ -620,6 +653,8 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    min-height: 200px;
+    height: 100%;
   }
   
   .loading, .no-messages {
