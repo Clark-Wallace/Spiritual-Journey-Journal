@@ -24,6 +24,14 @@
   }
   
   export function openChat(recipientId: string, recipientName: string) {
+    console.log('ChatPopoutManager openChat called:', { recipientId, recipientName });
+    
+    // Validate inputs
+    if (!recipientId || !recipientName) {
+      console.error('Invalid recipient data:', { recipientId, recipientName });
+      return;
+    }
+    
     // Check if chat already exists
     const existing = chatWindows.find(w => w.recipientId === recipientId);
     if (existing) {

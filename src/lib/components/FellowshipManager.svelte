@@ -13,6 +13,8 @@
   let searching = false;
   let activeTab: 'requests' | 'fellowship' = 'requests';
   let requestSubscription: any;
+  let presenceSubscription: any;
+  let onlineUsers: Set<string> = new Set();
   
   let hasLoaded = false;
   
@@ -20,6 +22,9 @@
     return () => {
       if (requestSubscription) {
         supabase.removeChannel(requestSubscription);
+      }
+      if (presenceSubscription) {
+        supabase.removeChannel(presenceSubscription);
       }
     };
   });
@@ -29,6 +34,7 @@
     loadFellowships();
     loadRequests();
     setupRequestSubscription();
+    setupPresenceSubscription();
     // Default to requests tab if there are any
     if (incomingRequests.length > 0) {
       activeTab = 'requests';
@@ -41,6 +47,10 @@
     if (requestSubscription) {
       supabase.removeChannel(requestSubscription);
       requestSubscription = null;
+    }
+    if (presenceSubscription) {
+      supabase.removeChannel(presenceSubscription);
+      presenceSubscription = null;
     }
   }
   
@@ -69,6 +79,47 @@
         }
       )
       .subscribe();
+  }
+  
+  async function setupPresenceSubscription() {
+    const user = await authStore.getUser();
+    if (!user) return;
+    
+    // Don't create duplicate subscriptions
+    if (presenceSubscription) {
+      return;
+    }
+    
+    // Subscribe to presence channel for all users
+    presenceSubscription = supabase
+      .channel('fellowship-presence')
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceSubscription.presenceState();
+        const newOnlineUsers = new Set<string>();
+        
+        Object.keys(state).forEach(key => {
+          const presences = state[key];
+          if (presences && presences.length > 0) {
+            presences.forEach((presence: any) => {
+              if (presence.user_id) {
+                newOnlineUsers.add(presence.user_id);
+              }
+            });
+          }
+        });
+        
+        onlineUsers = newOnlineUsers;
+        console.log('Online users updated:', Array.from(onlineUsers));
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          // Track our own presence
+          await presenceSubscription.track({
+            user_id: user.id,
+            online_at: new Date().toISOString(),
+          });
+        }
+      });
   }
   
   async function loadFellowships() {
@@ -103,6 +154,7 @@
       }
     } else {
       fellowships = data || [];
+      console.log('Loaded fellowships:', fellowships);
     }
     
     loading = false;
@@ -504,12 +556,18 @@
                 <div class="fellow-card">
                   <div class="fellow-info">
                     <span class="fellow-icon">👤</span>
-                    <span class="fellow-name">{fellow.fellow_name}</span>
+                    <span class="fellow-name">
+                      {fellow.fellow_name}
+                      {#if onlineUsers.has(fellow.fellow_id)}
+                        <span class="online-indicator" title="Online">●</span>
+                      {/if}
+                    </span>
                   </div>
                   <div class="fellow-actions">
                     <button 
                       class="chat-btn"
                       on:click={() => {
+                        console.log('Opening chat with fellow:', { fellow_id: fellow.fellow_id, fellow_name: fellow.fellow_name });
                         if (typeof window !== 'undefined' && (window as any).openPrivateChat) {
                           (window as any).openPrivateChat(fellow.fellow_id, fellow.fellow_name);
                         }
@@ -885,6 +943,20 @@
   .fellow-name {
     color: var(--text-light);
     font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .online-indicator {
+    color: #4caf50;
+    font-size: 0.8rem;
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
   }
   
   .fellow-actions {
