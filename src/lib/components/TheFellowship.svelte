@@ -3,9 +3,12 @@
   import { supabase, getCurrentUser } from '../supabase';
   import { authStore, userInfo } from '../stores/auth';
   
-  type FellowshipView = 'feed' | 'members' | 'requests' | 'profile';
+  import FellowshipGroups from './FellowshipGroups.svelte';
+  
+  type FellowshipView = 'feed' | 'members' | 'requests' | 'groups' | 'profile';
   
   let currentView: FellowshipView = 'feed';
+  let showGroups = false;
   
   // Mood emojis mapping
   const moodEmojis: Record<string, string> = {
@@ -650,6 +653,12 @@
     >
       ✉️ Requests {#if fellowshipRequests.length > 0}({fellowshipRequests.length}){/if}
     </button>
+    <button 
+      class:active={currentView === 'groups'}
+      on:click={() => { currentView = 'groups'; showGroups = true; }}
+    >
+      🏛️ Groups
+    </button>
   </div>
   
   <div class="fellowship-content">
@@ -916,6 +925,20 @@
             </div>
           {/each}
         {/if}
+      </div>
+      
+    {:else if currentView === 'groups'}
+      <!-- Fellowship Groups -->
+      <div class="groups-section">
+        <p class="groups-description">
+          Create and join fellowship groups for focused spiritual growth and community
+        </p>
+        <button 
+          class="open-groups-btn"
+          on:click={() => showGroups = true}
+        >
+          🏛️ Open Fellowship Groups
+        </button>
       </div>
       
     {:else if currentView === 'profile' && selectedProfile}
@@ -1662,4 +1685,40 @@
       gap: 0.5rem;
     }
   }
+  
+  /* Groups Section */
+  .groups-section {
+    text-align: center;
+    padding: 3rem 1rem;
+  }
+  
+  .groups-description {
+    color: var(--text-scripture);
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  .open-groups-btn {
+    padding: 1rem 2rem;
+    background: linear-gradient(135deg, var(--primary-gold), #ffb300);
+    color: var(--bg-dark);
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
+  }
+  
+  .open-groups-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(255, 215, 0, 0.3);
+  }
 </style>
+
+<!-- Fellowship Groups Modal -->
+<FellowshipGroups bind:show={showGroups} />
