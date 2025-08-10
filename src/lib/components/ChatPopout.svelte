@@ -74,12 +74,15 @@
       });
     
     if (error && (error.message?.includes('function') || error?.code === '42883' || error?.code === '42702')) {
+      console.log('RPC failed, using direct query. Error:', error);
       const result = await supabase
         .from('private_messages')
         .select('*')
         .or(`and(from_user_id.eq.${user.id},to_user_id.eq.${recipientId}),and(from_user_id.eq.${recipientId},to_user_id.eq.${user.id})`)
         .order('created_at', { ascending: false })
         .limit(50);
+      
+      console.log('Direct query result:', result);
       
       if (!result.error && result.data) {
         data = result.data.map(msg => ({
@@ -100,9 +103,14 @@
           .eq('to_user_id', user.id)
           .eq('from_user_id', recipientId)
           .eq('is_read', false);
+      } else if (result.error) {
+        console.error('Error loading messages:', result.error);
       }
     } else if (data) {
+      console.log('RPC succeeded, got data:', data);
       data = data.reverse();
+    } else if (error) {
+      console.error('RPC error:', error);
     }
     
     if (data) {
@@ -123,16 +131,38 @@
     const user = await getCurrentUser();
     if (!user) return;
     
-    const { error } = await supabase
+    console.log('Sending message:', { from: user.id, to: recipientId, message: newMessage.trim() });
+    
+    const { data, error } = await supabase
       .from('private_messages')
       .insert({
         from_user_id: user.id,
         to_user_id: recipientId,
         message: newMessage.trim()
-      });
+      })
+      .select()
+      .single();
     
-    if (!error) {
+    if (error) {
+      console.error('Error sending message:', error);
+    } else {
+      console.log('Message sent:', data);
       newMessage = '';
+      // Immediately add to local messages if not received via subscription
+      if (!messages.find(m => m.message_id === data.id)) {
+        messages = [...messages, {
+          message_id: data.id,
+          from_user_id: data.from_user_id,
+          from_user_name: $userInfo?.name || 'You',
+          to_user_id: data.to_user_id,
+          to_user_name: recipientName,
+          message: data.message,
+          is_read: data.is_read,
+          created_at: data.created_at,
+          is_mine: true
+        }];
+        scrollToBottom();
+      }
     }
   }
   

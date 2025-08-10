@@ -26,12 +26,24 @@
   let loading = true;
   let newPostContent = '';
   let newPostType: 'post' | 'prayer' | 'testimony' | 'praise' = 'post';
+  let searchTerm = '';
+  let searchResults: any[] = [];
+  let searching = false;
+  let onlineUsers: Set<string> = new Set();
+  let presenceSubscription: any;
   
   onMount(async () => {
     await loadFellowships();
     await loadFellowshipFeed();
     await loadFellowshipMembers();
     await loadRequests();
+    setupPresenceSubscription();
+    
+    return () => {
+      if (presenceSubscription) {
+        supabase.removeChannel(presenceSubscription);
+      }
+    };
   });
   
   async function loadFellowships() {
@@ -408,17 +420,193 @@
     if (!user) return;
     
     if (confirm('Remove this person from your fellowship?')) {
-      const { error } = await supabase
-        .from('fellowships')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('fellow_id', fellowId);
+      // Use RPC function to remove both sides
+      const { data, error } = await supabase
+        .rpc('remove_fellowship', {
+          p_user_id: user.id,
+          p_fellow_id: fellowId
+        });
       
-      if (!error) {
-        fellowships.delete(fellowId);
-        fellowships = new Set(fellowships);
+      if (error) {
+        console.error('Error removing from fellowship:', error);
+        // Fallback: try to remove both sides manually
+        await supabase
+          .from('fellowships')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('fellow_id', fellowId);
+        
+        await supabase
+          .from('fellowships')
+          .delete()
+          .eq('user_id', fellowId)
+          .eq('fellow_id', user.id);
+      }
+      
+      fellowships.delete(fellowId);
+      fellowships = new Set(fellowships);
+      await loadFellowshipMembers();
+      await loadFellowshipFeed();
+    }
+  }
+  
+  async function setupPresenceSubscription() {
+    const user = await getCurrentUser();
+    if (!user) return;
+    
+    loadOnlineUsers();
+    
+    presenceSubscription = supabase
+      .channel('fellowship-presence-section')
+      .on('postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'user_presence'
+        },
+        () => loadOnlineUsers()
+      )
+      .subscribe();
+  }
+  
+  async function loadOnlineUsers() {
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    
+    const { data, error } = await supabase
+      .from('user_presence')
+      .select('user_id')
+      .gte('last_seen', twoMinutesAgo);
+    
+    if (!error && data) {
+      onlineUsers = new Set(data.map(u => u.user_id));
+    }
+  }
+  
+  async function searchUsers() {
+    if (!searchTerm.trim()) {
+      searchResults = [];
+      return;
+    }
+    
+    searching = true;
+    const user = await getCurrentUser();
+    
+    const { data: rpcData, error: rpcError } = await supabase
+      .rpc('get_all_users_with_profiles');
+    
+    if (!rpcError && rpcData) {
+      searchResults = (rpcData || [])
+        .filter(u => u.user_id !== user?.id)
+        .filter(u => !fellowships.has(u.user_id))
+        .filter(u => u.display_name.toLowerCase().includes(searchTerm.toLowerCase()))
+        .slice(0, 10)
+        .map(u => ({
+          user_id: u.user_id,
+          user_name: u.display_name
+        }));
+    } else {
+      // Fallback to searching in user_profiles table
+      let { data: profileData } = await supabase
+        .from('user_profiles')
+        .select('user_id, display_name')
+        .neq('user_id', user?.id)
+        .limit(20);
+      
+      if (profileData) {
+        searchResults = profileData
+          .filter(profile => !fellowships.has(profile.user_id))
+          .filter(profile => profile.display_name.toLowerCase().includes(searchTerm.toLowerCase()))
+          .slice(0, 10)
+          .map(profile => ({
+            user_id: profile.user_id,
+            user_name: profile.display_name
+          }));
+      }
+    }
+    
+    searching = false;
+  }
+  
+  async function sendFellowshipRequest(fellowId: string, fellowName: string) {
+    const user = await getCurrentUser();
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .rpc('send_fellowship_request', {
+        p_from_user_id: user.id,
+        p_to_user_id: fellowId
+      });
+    
+    if (error) {
+      console.error('Error sending request:', error);
+      const { error: insertError } = await supabase
+        .from('fellowship_requests')
+        .insert({
+          from_user_id: user.id,
+          to_user_id: fellowId,
+          status: 'pending'
+        });
+      
+      if (!insertError) {
+        alert('Fellowship request sent!');
+      } else {
+        alert('Failed to send fellowship request');
+      }
+    } else if (data?.success) {
+      if (data.message === 'Fellowship established (mutual request)') {
+        await loadFellowships();
         await loadFellowshipMembers();
-        await loadFellowshipFeed();
+        alert('Fellowship established! They had already requested you.');
+      } else {
+        alert('Fellowship request sent!');
+      }
+    }
+    
+    searchTerm = '';
+    searchResults = [];
+  }
+  
+  async function startPrivateChat(userId: string, userName: string) {
+    const user = await getCurrentUser();
+    if (!user) return;
+    
+    let { data, error } = await supabase
+      .rpc('send_chat_request', {
+        p_from_user_id: user.id,
+        p_to_user_id: userId,
+        p_from_user_name: $userInfo?.name || user.email?.split('@')[0] || 'Anonymous'
+      });
+    
+    if (error && (error.message?.includes('function') || error?.code === '42883')) {
+      const directResult = await supabase
+        .from('chat_requests')
+        .insert({
+          from_user_id: user.id,
+          to_user_id: userId,
+          from_user_name: $userInfo?.name || user.email?.split('@')[0] || 'Anonymous',
+          status: 'pending',
+          expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString()
+        })
+        .select()
+        .single();
+      
+      if (!directResult.error) {
+        alert(`Chat request sent to ${userName}`);
+        return;
+      } else if (directResult.error.message?.includes('does not exist')) {
+        if (typeof window !== 'undefined' && (window as any).openPrivateChat) {
+          (window as any).openPrivateChat(userId, userName);
+        }
+        return;
+      }
+    }
+    
+    if (!error && data && data[0]) {
+      const result = data[0];
+      if (result.status === 'sent') {
+        alert(`Chat request sent to ${userName}`);
+      } else if (result.status === 'exists') {
+        alert(`Chat request already pending with ${userName}`);
       }
     }
   }
@@ -617,10 +805,42 @@
       <!-- Fellowship Members List -->
       <div class="members-list">
         <h3>Your Fellowship Members</h3>
+        
+        <!-- Search Section -->
+        <div class="search-section">
+          <input
+            type="text"
+            placeholder="Search for believers to add..."
+            bind:value={searchTerm}
+            on:input={searchUsers}
+            class="search-input"
+          />
+          
+          {#if searching}
+            <div class="searching">Searching...</div>
+          {/if}
+          
+          {#if searchResults.length > 0}
+            <div class="search-results">
+              {#each searchResults as result}
+                <div class="search-result">
+                  <span class="user-name">{result.user_name}</span>
+                  <button 
+                    class="add-btn"
+                    on:click={() => sendFellowshipRequest(result.user_id, result.user_name)}
+                  >
+                    ➕ Send Request
+                  </button>
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+        
         {#if fellowshipMembers.length === 0}
           <div class="empty-state">
             <p>No one in your fellowship yet.</p>
-            <p>Add believers from The Way chat to build your fellowship!</p>
+            <p>Search above to send fellowship requests!</p>
           </div>
         {:else}
           {#each fellowshipMembers as member}
@@ -634,6 +854,9 @@
                   on:click={() => viewProfile(member.id)}
                 >
                   {member.name}
+                  {#if onlineUsers.has(member.id)}
+                    <span class="online-indicator" title="Online">●</span>
+                  {/if}
                 </button>
                 <div class="member-meta">
                   Fellowship since {formatDate(member.joined)}
@@ -642,11 +865,7 @@
               <div class="member-actions">
                 <button 
                   class="chat-btn"
-                  on:click={() => {
-                    if (typeof window !== 'undefined' && (window as any).openPrivateChat) {
-                      (window as any).openPrivateChat(member.id, member.name);
-                    }
-                  }}
+                  on:click={() => startPrivateChat(member.id, member.name)}
                   title="Start private chat"
                 >
                   💬
@@ -1225,10 +1444,95 @@
     cursor: pointer;
     padding: 0;
     text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
   
   .member-name:hover {
     text-decoration: underline;
+  }
+  
+  .online-indicator {
+    color: #4caf50;
+    font-size: 0.8rem;
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  
+  .search-section {
+    margin-bottom: 1.5rem;
+  }
+  
+  .search-input {
+    width: 100%;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-gold);
+    border-radius: 8px;
+    color: var(--text-light);
+    font-size: 1rem;
+    font-family: inherit;
+  }
+  
+  .search-input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--border-gold-strong);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+  }
+  
+  .searching {
+    text-align: center;
+    color: var(--text-scripture);
+    padding: 1rem;
+    font-style: italic;
+  }
+  
+  .search-results {
+    margin-top: 0.5rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 8px;
+    padding: 0.5rem;
+  }
+  
+  .search-result {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    border-radius: 6px;
+    transition: background 0.2s;
+  }
+  
+  .search-result:hover {
+    background: rgba(255, 215, 0, 0.05);
+  }
+  
+  .user-name {
+    color: var(--text-light);
+  }
+  
+  .add-btn {
+    padding: 0.25rem 0.75rem;
+    background: linear-gradient(135deg, var(--primary-gold), #ffb300);
+    color: var(--bg-dark);
+    border: none;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+  }
+  
+  .add-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 10px rgba(255, 215, 0, 0.3);
   }
   
   .member-meta {
