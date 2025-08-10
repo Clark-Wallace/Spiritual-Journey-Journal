@@ -22,8 +22,10 @@
   // Group management
   let selectedGroup: any = null;
   let groupPosts: any[] = [];
+  let groupMembers: any[] = [];
   let newPostContent = '';
   let showMemberSelect = false;
+  let showAddMembers = false;
   
   onMount(() => {
     if (show) {
@@ -71,12 +73,32 @@
     const user = await authStore.getUser();
     if (!user) return;
     
-    // Get all fellowship members
-    const { data } = await supabase
+    // Get all fellowship members using RPC function
+    const { data, error } = await supabase
       .rpc('get_fellowship_members', { for_user_id: user.id });
     
-    if (data) {
+    if (error) {
+      console.error('Error loading fellowship members:', error);
+      // Fallback to direct query
+      const { data: fallbackData } = await supabase
+        .from('fellowships')
+        .select(`
+          fellow_id,
+          user_profiles!fellow_id (
+            display_name
+          )
+        `)
+        .eq('user_id', user.id);
+      
+      if (fallbackData) {
+        fellowshipMembers = fallbackData.map(f => ({
+          fellow_id: f.fellow_id,
+          fellow_name: f.user_profiles?.display_name || 'Unknown'
+        }));
+      }
+    } else if (data) {
       fellowshipMembers = data;
+      console.log('Loaded fellowship members:', fellowshipMembers);
     }
   }
   
@@ -166,6 +188,48 @@
     groupPosts = data || [];
   }
   
+  async function loadGroupMembers(groupId: string) {
+    const { data } = await supabase
+      .from('fellowship_group_members')
+      .select(`
+        user_id,
+        role,
+        joined_at,
+        user_profiles!user_id (
+          display_name
+        )
+      `)
+      .eq('group_id', groupId)
+      .eq('is_active', true);
+    
+    groupMembers = data || [];
+  }
+  
+  async function addMembersToGroup() {
+    if (!selectedGroup || selectedMembers.size === 0) return;
+    
+    const user = await authStore.getUser();
+    if (!user) return;
+    
+    const memberIds = Array.from(selectedMembers);
+    const { data, error } = await supabase
+      .rpc('invite_to_fellowship_group', {
+        p_group_id: selectedGroup.group_id,
+        p_user_ids: memberIds,
+        p_message: `You've been invited to join ${selectedGroup.group_name}`
+      });
+    
+    if (error) {
+      console.error('Error inviting members:', error);
+      alert('Failed to invite members');
+    } else {
+      alert('Members invited successfully!');
+      selectedMembers.clear();
+      showAddMembers = false;
+      await loadGroupMembers(selectedGroup.group_id);
+    }
+  }
+  
   async function postToGroup() {
     if (!newPostContent.trim() || !selectedGroup) return;
     
@@ -200,6 +264,7 @@
   function selectGroup(group: any) {
     selectedGroup = group;
     loadGroupPosts(group.group_id);
+    loadGroupMembers(group.group_id);
   }
   
   function formatDate(dateString: string) {
@@ -297,7 +362,66 @@
             
             {#if selectedGroup}
               <div class="group-detail">
-                <h3>{selectedGroup.group_name} - Activity</h3>
+                <div class="group-detail-header">
+                  <h3>{selectedGroup.group_name} - Activity</h3>
+                  {#if selectedGroup.my_role === 'admin'}
+                    <button 
+                      class="manage-btn"
+                      on:click={() => showAddMembers = !showAddMembers}
+                    >
+                      {showAddMembers ? 'Hide' : '➕ Add Members'}
+                    </button>
+                  {/if}
+                </div>
+                
+                {#if showAddMembers && selectedGroup.my_role === 'admin'}
+                  <div class="add-members-section">
+                    <h4>Add Fellowship Members to Group</h4>
+                    <div class="member-selector">
+                      <input
+                        type="text"
+                        placeholder="Search fellowship members..."
+                        bind:value={searchTerm}
+                        class="member-search"
+                      />
+                      <div class="members-list">
+                        {#each filteredMembers as member}
+                          <label class="member-item">
+                            <input
+                              type="checkbox"
+                              checked={selectedMembers.has(member.fellow_id)}
+                              on:change={() => toggleMember(member.fellow_id)}
+                            />
+                            <span>{member.fellow_name}</span>
+                          </label>
+                        {/each}
+                      </div>
+                      <button 
+                        class="add-members-btn"
+                        on:click={addMembersToGroup}
+                        disabled={selectedMembers.size === 0}
+                      >
+                        Invite {selectedMembers.size} Member{selectedMembers.size !== 1 ? 's' : ''}
+                      </button>
+                    </div>
+                  </div>
+                {/if}
+                
+                <div class="group-members-list">
+                  <h4>Members ({groupMembers.length})</h4>
+                  <div class="members-grid">
+                    {#each groupMembers as member}
+                      <div class="member-badge">
+                        <span class="member-name">
+                          {member.user_profiles?.display_name || 'Unknown'}
+                        </span>
+                        {#if member.role === 'admin'}
+                          <span class="admin-badge">Admin</span>
+                        {/if}
+                      </div>
+                    {/each}
+                  </div>
+                </div>
                 
                 <div class="post-input">
                   <textarea
@@ -631,6 +755,110 @@
   .group-detail h3 {
     color: var(--text-divine);
     margin: 0 0 1rem 0;
+  }
+  
+  .group-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  
+  .manage-btn {
+    padding: 0.5rem 1rem;
+    background: rgba(138, 43, 226, 0.2);
+    color: var(--text-divine);
+    border: 1px solid rgba(138, 43, 226, 0.3);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+  }
+  
+  .manage-btn:hover {
+    background: rgba(138, 43, 226, 0.3);
+    transform: scale(1.05);
+  }
+  
+  .add-members-section {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .add-members-section h4 {
+    color: var(--text-divine);
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+  }
+  
+  .add-members-btn {
+    width: 100%;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, var(--primary-gold), #ffb300);
+    color: var(--bg-dark);
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 0.5rem;
+  }
+  
+  .add-members-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+  }
+  
+  .add-members-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .group-members-list {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 215, 0, 0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .group-members-list h4 {
+    color: var(--text-divine);
+    margin: 0 0 0.75rem 0;
+    font-size: 0.95rem;
+  }
+  
+  .members-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .member-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 15px;
+    font-size: 0.85rem;
+  }
+  
+  .member-name {
+    color: var(--text-light);
+  }
+  
+  .admin-badge {
+    background: linear-gradient(135deg, var(--primary-gold), #ffb300);
+    color: var(--bg-dark);
+    padding: 0.1rem 0.4rem;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
   }
   
   .post-input {
