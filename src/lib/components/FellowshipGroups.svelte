@@ -253,14 +253,14 @@
     });
     
     // If the main function fails with ambiguous error or function doesn't exist, try the safe version
-    if (error && (
+    if ((error && (
         error.message?.includes('ambiguous') || 
         error.message?.includes('does not exist') ||
         error.message?.includes('No function matches') ||
         error.code === '42883'
-    )) {
+    )) || (data && data[0] && !data[0].success && data[0].message?.includes('ambiguous'))) {
       console.log('Main function failed, trying safe version...');
-      console.log('Error was:', error.message);
+      console.log('Error/Issue was:', error?.message || data[0]?.message);
       
       const safeResult = await supabase
         .rpc('create_fellowship_group_safe', params);
@@ -274,6 +274,25 @@
         errorMessage: error?.message,
         errorCode: error?.code
       });
+      
+      // If safe version also fails with ambiguous, try the simple version
+      if ((error && error.message?.includes('ambiguous')) || 
+          (data && data[0] && !data[0].success && data[0].message?.includes('ambiguous'))) {
+        console.log('Safe version also failed, trying simple version...');
+        
+        const simpleResult = await supabase
+          .rpc('create_fellowship_group_simple', params);
+        
+        data = simpleResult.data;
+        error = simpleResult.error;
+        
+        console.log('Simple version response:', { 
+          data, 
+          error,
+          errorMessage: error?.message,
+          errorCode: error?.code
+        });
+      }
     }
     
     console.log('Final RPC response:', { data, error });
