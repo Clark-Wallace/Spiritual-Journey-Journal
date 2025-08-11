@@ -3,6 +3,8 @@
   import { supabase } from '../supabase';
   import { authStore } from '../stores/auth';
   
+  console.log('FellowshipGroups component loaded/imported');
+  
   export let show = false;
   
   let activeTab: 'my-groups' | 'discover' | 'create' | 'invites' = 'my-groups';
@@ -29,6 +31,7 @@
   let showAddMembers = false;
   
   onMount(() => {
+    console.log('FellowshipGroups component mounted, show =', show);
     if (show) {
       loadMyGroups();
       loadInvites();
@@ -36,6 +39,15 @@
       loadPublicGroups();
     }
   });
+  
+  // Watch for changes to 'show' prop
+  $: if (show) {
+    console.log('Fellowship Groups modal opened');
+    loadMyGroups();
+    loadInvites();
+    loadFellowshipMembers();
+    loadPublicGroups();
+  }
   
   async function loadMyGroups() {
     loading = true;
