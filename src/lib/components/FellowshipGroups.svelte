@@ -444,18 +444,19 @@
   }
   
   async function loadGroupMembers(groupId: string) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('fellowship_group_members')
       .select(`
         user_id,
         role,
-        joined_at,
-        user_profiles!user_id (
-          display_name
-        )
+        joined_at
       `)
       .eq('group_id', groupId)
       .eq('is_active', true);
+    
+    if (error) {
+      console.error('Error loading group members:', error);
+    }
     
     groupMembers = data || [];
   }
@@ -517,9 +518,15 @@
   }
   
   function selectGroup(group: any) {
+    console.log('Group selected:', group);
     selectedGroup = group;
-    loadGroupPosts(group.group_id);
-    loadGroupMembers(group.group_id);
+    if (group.group_id) {
+      console.log('Loading posts and members for group:', group.group_id);
+      loadGroupPosts(group.group_id);
+      loadGroupMembers(group.group_id);
+    } else {
+      console.error('Group has no group_id:', group);
+    }
   }
   
   function formatDate(dateString: string) {
@@ -674,7 +681,7 @@
                     {#each groupMembers as member}
                       <div class="member-badge">
                         <span class="member-name">
-                          {member.user_profiles?.display_name || 'Unknown'}
+                          Member
                         </span>
                         {#if member.role === 'admin'}
                           <span class="admin-badge">Admin</span>
