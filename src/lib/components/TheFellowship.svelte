@@ -146,48 +146,87 @@
   }
   
   function setupGroupNotifications() {
-    // Subscribe to new posts in groups
+    // Subscribe to ALL new posts (both fellowship and group posts)
     groupPostsSubscription = supabase
-      .channel('group-posts')
+      .channel('fellowship-posts-channel')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'community_posts',
-          filter: 'group_id=not.is.null'
+          table: 'community_posts'
         },
         async (payload) => {
-          const newPost = payload.new;
+          const newPost = payload.new as any;
           const user = await getCurrentUser();
           
           // Don't notify for own posts
           if (newPost.user_id === user?.id) return;
           
-          // Check if user is member of this group
-          const isMember = myGroups.some(g => g.id === newPost.group_id);
-          if (!isMember) return;
-          
-          // If this group is not currently selected, increment unread count
-          if (selectedGroupId !== newPost.group_id) {
-            groupUnreadCounts[newPost.group_id] = (groupUnreadCounts[newPost.group_id] || 0) + 1;
-            groupUnreadCounts = groupUnreadCounts; // Trigger reactivity
+          // Handle group posts
+          if (newPost.group_id) {
+            // Check if user is member of this group
+            const isMember = myGroups.some(g => g.id === newPost.group_id);
+            if (!isMember) return;
             
-            // Find group name for notification
-            const group = myGroups.find(g => g.id === newPost.group_id);
-            if (group) {
-              // Show browser notification if permitted
-              if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification(`New message in ${group.name}`, {
-                  body: newPost.content.substring(0, 100),
-                  icon: '/favicon.ico'
-                });
+            // If this group is currently selected, refresh the feed
+            if (selectedGroupId === newPost.group_id) {
+              await loadFellowshipFeed();
+            } else {
+              // Increment unread count for this group
+              groupUnreadCounts[newPost.group_id] = (groupUnreadCounts[newPost.group_id] || 0) + 1;
+              groupUnreadCounts = groupUnreadCounts; // Trigger reactivity
+              
+              // Find group name for notification
+              const group = myGroups.find(g => g.id === newPost.group_id);
+              if (group) {
+                // Show browser notification if permitted
+                if ('Notification' in window && Notification.permission === 'granted') {
+                  new Notification(`New message in ${group.name}`, {
+                    body: newPost.content.substring(0, 100),
+                    icon: '/favicon.ico'
+                  });
+                }
               }
             }
-          } else {
-            // If viewing this group, just refresh the feed
+          } else if (newPost.is_fellowship_only) {
+            // Handle regular fellowship posts (no group)
+            if (!selectedGroupId) {
+              // We're viewing "All Fellowship", refresh the feed
+              await loadFellowshipFeed();
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'community_posts'
+        },
+        async (payload) => {
+          // Refresh feed on updates (edits, deletions)
+          const updatedPost = payload.new as any;
+          
+          // Check if this update is relevant to current view
+          if (selectedGroupId && updatedPost.group_id === selectedGroupId) {
+            await loadFellowshipFeed();
+          } else if (!selectedGroupId && updatedPost.is_fellowship_only && !updatedPost.group_id) {
             await loadFellowshipFeed();
           }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'community_posts'
+        },
+        async () => {
+          // Refresh feed when posts are deleted
+          await loadFellowshipFeed();
         }
       )
       .subscribe();
