@@ -306,12 +306,18 @@
     } else if (data && data[0]) {
       const result = data[0];
       console.log('Group creation result object:', result);
-      console.log('Result success:', result.success);
-      console.log('Result group_id:', result.group_id);
-      console.log('Result message:', result.message);
       
-      if (result.success && result.group_id) {
-        console.log('Group created successfully with ID:', result.group_id);
+      // Handle different column names from different function versions
+      const success = result.success !== undefined ? result.success : result.out_success;
+      const groupId = result.group_id || result.out_group_id;
+      const message = result.message || result.out_message;
+      
+      console.log('Result success:', success);
+      console.log('Result group_id:', groupId);
+      console.log('Result message:', message);
+      
+      if (success && groupId) {
+        console.log('Group created successfully with ID:', groupId);
         
         // Invite selected members
         if (selectedMembers.size > 0) {
@@ -319,7 +325,7 @@
           console.log('Inviting members:', memberIds);
           const { data: inviteData, error: inviteError } = await supabase
             .rpc('invite_to_fellowship_group', {
-              p_group_id: result.group_id,
+              p_group_id: groupId,
               p_user_ids: memberIds,
               p_message: `You've been invited to join ${groupName}`
             });
@@ -350,7 +356,7 @@
         console.log('=== END: Group creation complete ===');
       } else {
         console.log('Group creation returned false success');
-        alert(result.message || 'Failed to create group');
+        alert(message || 'Failed to create group');
       }
     } else if (data === null) {
       console.log('=== WARNING: RPC returned null data ===');
