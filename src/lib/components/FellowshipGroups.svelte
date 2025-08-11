@@ -40,16 +40,24 @@
   async function loadMyGroups() {
     loading = true;
     const user = await authStore.getUser();
-    if (!user) return;
+    if (!user) {
+      console.log('No user found in loadMyGroups');
+      loading = false;
+      return;
+    }
     
-    console.log('Loading groups for user:', user.id);
+    console.log('=== Loading My Groups ===');
+    console.log('User ID:', user.id);
     
     // Try RPC first
+    console.log('Calling get_my_fellowship_groups RPC...');
     const { data, error } = await supabase
       .rpc('get_my_fellowship_groups');
     
     if (error) {
-      console.error('Error loading groups via RPC:', error);
+      console.error('RPC Error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       
       // Fallback to direct query
       console.log('Trying direct query fallback...');
@@ -68,15 +76,23 @@
       
       if (directError) {
         console.error('Direct query also failed:', directError);
+        myGroups = [];
       } else {
         console.log('Direct query results:', directData);
+        console.log('Number of groups from direct query:', directData?.length || 0);
         myGroups = directData || [];
       }
     } else {
-      console.log('Groups loaded via RPC:', data);
+      console.log('RPC Success! Data:', data);
+      console.log('Number of groups from RPC:', data?.length || 0);
+      if (data && data.length > 0) {
+        console.log('First group:', data[0]);
+      }
       myGroups = data || [];
     }
     
+    console.log('Final myGroups array:', myGroups);
+    console.log('Total groups loaded:', myGroups.length);
     loading = false;
   }
   
@@ -102,6 +118,8 @@
     const user = await authStore.getUser();
     if (!user) return;
     
+    console.log('=== Loading Public Groups ===');
+    
     // Get public groups from fellowship members that user is not already in
     const { data, error } = await supabase
       .from('fellowship_groups')
@@ -121,16 +139,29 @@
     
     if (error) {
       console.error('Error loading public groups:', error);
+      console.error('Error details:', error.message, error.code);
     } else if (data) {
+      console.log('Public groups loaded:', data);
+      console.log('Number of public groups:', data.length);
+      
       // Filter out groups user is already a member of
-      const { data: myMemberships } = await supabase
+      const { data: myMemberships, error: membershipError } = await supabase
         .from('fellowship_group_members')
         .select('group_id')
         .eq('user_id', user.id)
         .eq('is_active', true);
       
+      if (membershipError) {
+        console.error('Error loading memberships:', membershipError);
+      }
+      
+      console.log('My memberships:', myMemberships);
       const myGroupIds = myMemberships?.map(m => m.group_id) || [];
+      console.log('My group IDs:', myGroupIds);
+      
       publicGroups = data.filter(g => !myGroupIds.includes(g.id));
+      console.log('Public groups after filtering:', publicGroups);
+      console.log('Number of public groups to show:', publicGroups.length);
       
       // Get member counts for each group
       for (const group of publicGroups) {
