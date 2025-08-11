@@ -27,6 +27,11 @@
   let fellowshipRequests: any[] = [];
   let selectedProfile: any = null;
   let loading = true;
+  
+  // Fellowship Groups
+  let myGroups: any[] = [];
+  let selectedGroupId: string | null = null;
+  let selectedGroupName: string = 'All Fellowship';
   let newPostContent = '';
   let newPostType: 'post' | 'prayer' | 'testimony' | 'praise' = 'post';
   let searchTerm = '';
@@ -37,6 +42,7 @@
   
   onMount(async () => {
     await loadFellowships();
+    await loadMyGroups();
     await loadFellowshipFeed();
     await loadFellowshipMembers();
     await loadRequests();
@@ -48,6 +54,43 @@
       }
     };
   });
+  
+  async function loadMyGroups() {
+    const user = await getCurrentUser();
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from('fellowship_group_members')
+      .select(`
+        group_id,
+        role,
+        fellowship_groups (
+          id,
+          name,
+          description,
+          group_type
+        )
+      `)
+      .eq('user_id', user.id)
+      .eq('is_active', true);
+    
+    if (!error && data) {
+      myGroups = data
+        .filter(m => m.fellowship_groups)
+        .map(m => ({
+          id: m.fellowship_groups.id,
+          name: m.fellowship_groups.name,
+          role: m.role,
+          type: m.fellowship_groups.group_type
+        }));
+    }
+  }
+  
+  async function selectGroup(groupId: string | null, groupName: string) {
+    selectedGroupId = groupId;
+    selectedGroupName = groupName;
+    await loadFellowshipFeed();
+  }
   
   async function loadFellowships() {
     const user = await getCurrentUser();
@@ -156,6 +199,38 @@
     const user = await getCurrentUser();
     if (!user) return;
     
+    // If a group is selected, load group-specific posts
+    if (selectedGroupId) {
+      // First try using community_posts with group_id filter
+      const { data, error } = await supabase
+        .from('community_posts')
+        .select(`
+          *,
+          reactions (
+            id,
+            reaction,
+            user_id
+          ),
+          encouragements (
+            id,
+            message,
+            user_name,
+            created_at
+          )
+        `)
+        .eq('group_id', selectedGroupId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (!error && data) {
+        fellowshipPosts = data;
+      } else {
+        fellowshipPosts = [];
+      }
+      return;
+    }
+    
+    // Otherwise load general fellowship feed
     if (fellowships.size === 0) {
       await loadFellowships();
     }
@@ -273,15 +348,18 @@
         content: newPostContent.trim(),
         share_type: newPostType,
         is_anonymous: false,
-        is_fellowship_only: true  // Mark as fellowship-only post
+        is_fellowship_only: true,
+        group_id: selectedGroupId || null  // Set group_id if a group is selected
       });
     
     if (!error) {
       newPostContent = '';
-      newPostType = 'post'; // Reset to default
+      newPostType = 'post';
       await loadFellowshipFeed();
-      // Optional: Show success feedback
-      console.log('Post shared with fellowship successfully!');
+      const message = selectedGroupId 
+        ? `Post shared with ${selectedGroupName} successfully!`
+        : 'Post shared with fellowship successfully!';
+      console.log(message);
     } else {
       console.error('Error creating post:', error);
       alert('Failed to share post. Please try again.');
@@ -661,13 +739,38 @@
     </button>
   </div>
   
+  <!-- Group Selector Row (shown only when on feed view) -->
+  {#if currentView === 'feed' && myGroups.length > 0}
+    <div class="group-selector">
+      <button 
+        class="group-tab"
+        class:active={!selectedGroupId}
+        on:click={() => selectGroup(null, 'All Fellowship')}
+      >
+        👥 All Fellowship
+      </button>
+      {#each myGroups as group}
+        <button 
+          class="group-tab"
+          class:active={selectedGroupId === group.id}
+          on:click={() => selectGroup(group.id, group.name)}
+        >
+          {group.type === 'bible_study' ? '📖' : group.type === 'prayer' ? '🙏' : '🏛️'} {group.name}
+          {#if group.role === 'admin'}
+            <span class="admin-badge">👑</span>
+          {/if}
+        </button>
+      {/each}
+    </div>
+  {/if}
+  
   <div class="fellowship-content">
     {#if currentView === 'feed'}
       <!-- Post Creator -->
       <div class="post-creator">
         <div class="creator-header">
-          <h3>💬 Share with your Fellowship</h3>
-          <span class="creator-subtitle">Your message stays within your trusted circle</span>
+          <h3>💬 Share with {selectedGroupName}</h3>
+          <span class="creator-subtitle">Your message stays within {selectedGroupId ? 'this group' : 'your trusted circle'}</span>
         </div>
         <div class="textarea-wrapper">
           <textarea
@@ -1029,6 +1132,51 @@
     background: linear-gradient(135deg, var(--primary-gold), #ffb300);
     color: var(--bg-dark);
     font-weight: 600;
+  }
+  
+  /* Group Selector Styles */
+  .group-selector {
+    display: flex;
+    gap: 0.5rem;
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background: rgba(138, 43, 226, 0.05);
+    border-radius: 10px;
+    border: 1px solid rgba(138, 43, 226, 0.2);
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+  
+  .group-tab {
+    padding: 0.5rem 1rem;
+    background: var(--bg-dark);
+    color: var(--text-light);
+    border: 1px solid var(--border-purple);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  
+  .group-tab:hover {
+    background: rgba(138, 43, 226, 0.1);
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+  }
+  
+  .group-tab.active {
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(30, 144, 255, 0.3));
+    border-color: var(--primary-color-bright);
+    color: var(--text-divine);
+    box-shadow: 0 2px 8px rgba(138, 43, 226, 0.3);
+  }
+  
+  .admin-badge {
+    font-size: 0.8rem;
+    margin-left: 0.25rem;
   }
   
   .post-creator {
