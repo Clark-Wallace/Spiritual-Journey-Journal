@@ -238,20 +238,11 @@
     console.log('RPC Parameters:', params);
     
     // First, let's check if the function exists
-    console.log('Attempting to call create_fellowship_group_debug RPC for detailed error info...');
+    console.log('Attempting to call create_fellowship_group RPC...');
     
-    // Try debug version first to get detailed error info
+    // Create the group (fixed version handles duplicates)
     let { data, error } = await supabase
-      .rpc('create_fellowship_group_debug', params);
-    
-    // If debug function doesn't exist, try regular
-    if (error && error.message?.includes('does not exist')) {
-      console.log('Debug function not found, trying regular create_fellowship_group...');
-      const regularResult = await supabase
-        .rpc('create_fellowship_group', params);
-      data = regularResult.data;
-      error = regularResult.error;
-    }
+      .rpc('create_fellowship_group', params);
     
     console.log('Initial RPC response:', { 
       data, 
