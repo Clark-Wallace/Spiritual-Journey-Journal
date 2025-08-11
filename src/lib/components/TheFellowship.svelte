@@ -32,6 +32,8 @@
   let myGroups: any[] = [];
   let selectedGroupId: string | null = null;
   let selectedGroupName: string = 'All Fellowship';
+  let groupUnreadCounts: Record<string, number> = {};
+  let groupPostsSubscription: any = null;
   let newPostContent = '';
   let newPostType: 'post' | 'prayer' | 'testimony' | 'praise' = 'post';
   let searchTerm = '';
@@ -43,14 +45,19 @@
   onMount(async () => {
     await loadFellowships();
     await loadMyGroups();
+    await loadGroupUnreadCounts();
     await loadFellowshipFeed();
     await loadFellowshipMembers();
     await loadRequests();
     setupPresenceSubscription();
+    setupGroupNotifications();
     
     return () => {
       if (presenceSubscription) {
         supabase.removeChannel(presenceSubscription);
+      }
+      if (groupPostsSubscription) {
+        supabase.removeChannel(groupPostsSubscription);
       }
     };
   });
@@ -90,6 +97,92 @@
     selectedGroupId = groupId;
     selectedGroupName = groupName;
     await loadFellowshipFeed();
+    
+    // Mark group as read when selected
+    if (groupId) {
+      await markGroupAsRead(groupId);
+      // Clear unread count for this group
+      groupUnreadCounts[groupId] = 0;
+      groupUnreadCounts = groupUnreadCounts; // Trigger reactivity
+    }
+  }
+  
+  async function loadGroupUnreadCounts() {
+    const user = await getCurrentUser();
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .rpc('get_group_unread_counts');
+    
+    if (!error && data) {
+      groupUnreadCounts = {};
+      data.forEach((item: any) => {
+        if (item.unread_count > 0) {
+          groupUnreadCounts[item.group_id] = item.unread_count;
+        }
+      });
+    }
+  }
+  
+  async function markGroupAsRead(groupId: string) {
+    const user = await getCurrentUser();
+    if (!user) return;
+    
+    await supabase
+      .rpc('mark_group_as_read', { p_group_id: groupId });
+  }
+  
+  function setupGroupNotifications() {
+    // Subscribe to new posts in groups
+    groupPostsSubscription = supabase
+      .channel('group-posts')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'community_posts',
+          filter: 'group_id=not.is.null'
+        },
+        async (payload) => {
+          const newPost = payload.new;
+          const user = await getCurrentUser();
+          
+          // Don't notify for own posts
+          if (newPost.user_id === user?.id) return;
+          
+          // Check if user is member of this group
+          const isMember = myGroups.some(g => g.id === newPost.group_id);
+          if (!isMember) return;
+          
+          // If this group is not currently selected, increment unread count
+          if (selectedGroupId !== newPost.group_id) {
+            groupUnreadCounts[newPost.group_id] = (groupUnreadCounts[newPost.group_id] || 0) + 1;
+            groupUnreadCounts = groupUnreadCounts; // Trigger reactivity
+            
+            // Find group name for notification
+            const group = myGroups.find(g => g.id === newPost.group_id);
+            if (group) {
+              // Show browser notification if permitted
+              if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(`New message in ${group.name}`, {
+                  body: newPost.content.substring(0, 100),
+                  icon: '/favicon.ico'
+                });
+              }
+            }
+          } else {
+            // If viewing this group, just refresh the feed
+            await loadFellowshipFeed();
+          }
+        }
+      )
+      .subscribe();
+    
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
   }
   
   async function loadFellowships() {
@@ -759,6 +852,9 @@
           {#if group.role === 'admin'}
             <span class="admin-badge">👑</span>
           {/if}
+          {#if groupUnreadCounts[group.id] && groupUnreadCounts[group.id] > 0}
+            <span class="unread-badge">{groupUnreadCounts[group.id]}</span>
+          {/if}
         </button>
       {/each}
     </div>
@@ -1177,6 +1273,41 @@
   .admin-badge {
     font-size: 0.8rem;
     margin-left: 0.25rem;
+  }
+  
+  .unread-badge {
+    background: linear-gradient(135deg, #ff4444, #ff6666);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 0.1rem 0.4rem;
+    border-radius: 10px;
+    margin-left: 0.5rem;
+    min-width: 1.2rem;
+    text-align: center;
+    display: inline-block;
+    animation: pulse 2s infinite;
+    box-shadow: 0 2px 4px rgba(255, 68, 68, 0.3);
+  }
+  
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+      box-shadow: 0 2px 4px rgba(255, 68, 68, 0.3);
+    }
+    50% {
+      transform: scale(1.05);
+      box-shadow: 0 2px 8px rgba(255, 68, 68, 0.5);
+    }
+    100% {
+      transform: scale(1);
+      box-shadow: 0 2px 4px rgba(255, 68, 68, 0.3);
+    }
+  }
+  
+  .group-tab:hover .unread-badge {
+    animation: none;
+    transform: scale(1.1);
   }
   
   .post-creator {
