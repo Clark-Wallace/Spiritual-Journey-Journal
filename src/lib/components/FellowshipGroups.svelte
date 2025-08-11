@@ -5,9 +5,10 @@
   
   export let show = false;
   
-  let activeTab: 'my-groups' | 'create' | 'invites' = 'my-groups';
+  let activeTab: 'my-groups' | 'discover' | 'create' | 'invites' = 'my-groups';
   let myGroups: any[] = [];
   let myInvites: any[] = [];
+  let publicGroups: any[] = [];
   let loading = false;
   
   // Create group form
@@ -32,6 +33,7 @@
       loadMyGroups();
       loadInvites();
       loadFellowshipMembers();
+      loadPublicGroups();
     }
   });
   
@@ -40,14 +42,41 @@
     const user = await authStore.getUser();
     if (!user) return;
     
+    console.log('Loading groups for user:', user.id);
+    
+    // Try RPC first
     const { data, error } = await supabase
       .rpc('get_my_fellowship_groups');
     
     if (error) {
-      console.error('Error loading groups:', error);
+      console.error('Error loading groups via RPC:', error);
+      
+      // Fallback to direct query
+      console.log('Trying direct query fallback...');
+      const { data: directData, error: directError } = await supabase
+        .from('fellowship_groups')
+        .select(`
+          *,
+          fellowship_group_members!inner(
+            user_id,
+            role,
+            is_active
+          )
+        `)
+        .or(`created_by.eq.${user.id},fellowship_group_members.user_id.eq.${user.id}`)
+        .eq('fellowship_group_members.is_active', true);
+      
+      if (directError) {
+        console.error('Direct query also failed:', directError);
+      } else {
+        console.log('Direct query results:', directData);
+        myGroups = directData || [];
+      }
     } else {
+      console.log('Groups loaded via RPC:', data);
       myGroups = data || [];
     }
+    
     loading = false;
   }
   
@@ -67,6 +96,82 @@
       .gte('expires_at', new Date().toISOString());
     
     myInvites = data || [];
+  }
+  
+  async function loadPublicGroups() {
+    const user = await authStore.getUser();
+    if (!user) return;
+    
+    // Get public groups from fellowship members that user is not already in
+    const { data, error } = await supabase
+      .from('fellowship_groups')
+      .select(`
+        id,
+        name,
+        description,
+        group_type,
+        created_by,
+        created_at,
+        user_profiles!created_by (
+          display_name
+        )
+      `)
+      .eq('is_private', false)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error loading public groups:', error);
+    } else if (data) {
+      // Filter out groups user is already a member of
+      const { data: myMemberships } = await supabase
+        .from('fellowship_group_members')
+        .select('group_id')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+      
+      const myGroupIds = myMemberships?.map(m => m.group_id) || [];
+      publicGroups = data.filter(g => !myGroupIds.includes(g.id));
+      
+      // Get member counts for each group
+      for (const group of publicGroups) {
+        const { count } = await supabase
+          .from('fellowship_group_members')
+          .select('*', { count: 'exact', head: true })
+          .eq('group_id', group.id)
+          .eq('is_active', true);
+        
+        group.member_count = count || 0;
+      }
+    }
+  }
+  
+  async function joinPublicGroup(groupId: string) {
+    const user = await authStore.getUser();
+    if (!user) return;
+    
+    loading = true;
+    
+    // Add user as member
+    const { error } = await supabase
+      .from('fellowship_group_members')
+      .insert({
+        group_id: groupId,
+        user_id: user.id,
+        role: 'member',
+        is_active: true
+      });
+    
+    if (error) {
+      console.error('Error joining group:', error);
+      alert('Failed to join group');
+    } else {
+      alert('Successfully joined group!');
+      await loadMyGroups();
+      await loadPublicGroups();
+      activeTab = 'my-groups';
+    }
+    
+    loading = false;
   }
   
   async function loadFellowshipMembers() {
@@ -103,46 +208,116 @@
   }
   
   async function createGroup() {
+    console.log('=== START: Create Group Process ===');
+    console.log('Create group button clicked');
+    console.log('Group name:', groupName);
+    console.log('Group description:', groupDescription);
+    console.log('Group type:', groupType);
+    console.log('Is private:', isPrivate);
+    
     if (!groupName.trim()) {
       alert('Please enter a group name');
       return;
     }
     
     const user = await authStore.getUser();
-    if (!user) return;
+    console.log('Current user:', user);
+    console.log('User ID:', user?.id);
+    if (!user) {
+      alert('You must be logged in to create a group');
+      return;
+    }
     
     loading = true;
+    const params = {
+      p_name: groupName,
+      p_description: groupDescription,
+      p_group_type: groupType,
+      p_is_private: isPrivate
+    };
+    console.log('RPC Parameters:', params);
     
-    // Create the group
-    const { data, error } = await supabase
-      .rpc('create_fellowship_group', {
-        p_name: groupName,
-        p_description: groupDescription,
-        p_group_type: groupType,
-        p_is_private: isPrivate
+    // First, let's check if the function exists
+    console.log('Attempting to call create_fellowship_group RPC...');
+    
+    // Create the group (try safe version first if main fails)
+    let { data, error } = await supabase
+      .rpc('create_fellowship_group', params);
+    
+    console.log('Initial RPC response:', { 
+      data, 
+      error, 
+      errorMessage: error?.message,
+      errorCode: error?.code,
+      errorDetails: error?.details
+    });
+    
+    // If the main function fails with ambiguous error or function doesn't exist, try the safe version
+    if (error && (
+        error.message?.includes('ambiguous') || 
+        error.message?.includes('does not exist') ||
+        error.message?.includes('No function matches') ||
+        error.code === '42883'
+    )) {
+      console.log('Main function failed, trying safe version...');
+      console.log('Error was:', error.message);
+      
+      const safeResult = await supabase
+        .rpc('create_fellowship_group_safe', params);
+      
+      data = safeResult.data;
+      error = safeResult.error;
+      
+      console.log('Safe version response:', { 
+        data, 
+        error,
+        errorMessage: error?.message,
+        errorCode: error?.code
       });
+    }
+    
+    console.log('Final RPC response:', { data, error });
     
     if (error) {
-      console.error('Error creating group:', error);
-      alert('Failed to create group');
+      console.error('=== ERROR: Group creation failed ===');
+      console.error('Error object:', error);
+      console.error('Error message:', error.message);
+      console.error('Error code:', error.code);
+      alert(`Failed to create group: ${error.message}`);
     } else if (data && data[0]) {
       const result = data[0];
+      console.log('Group creation result object:', result);
+      console.log('Result success:', result.success);
+      console.log('Result group_id:', result.group_id);
+      console.log('Result message:', result.message);
       
       if (result.success && result.group_id) {
+        console.log('Group created successfully with ID:', result.group_id);
+        
         // Invite selected members
         if (selectedMembers.size > 0) {
           const memberIds = Array.from(selectedMembers);
-          await supabase
+          console.log('Inviting members:', memberIds);
+          const { data: inviteData, error: inviteError } = await supabase
             .rpc('invite_to_fellowship_group', {
               p_group_id: result.group_id,
               p_user_ids: memberIds,
               p_message: `You've been invited to join ${groupName}`
             });
+          
+          console.log('Invite response:', { inviteData, inviteError });
+          
+          if (inviteError) {
+            console.error('Error inviting members:', inviteError);
+          } else {
+            console.log('Members invited successfully');
+          }
         }
         
         alert('Group created successfully!');
         
         // Reset form
+        console.log('Resetting form...');
         groupName = '';
         groupDescription = '';
         groupType = 'general';
@@ -150,12 +325,28 @@
         selectedMembers.clear();
         
         // Reload groups and switch to my groups tab
+        console.log('Reloading groups...');
         await loadMyGroups();
         activeTab = 'my-groups';
+        console.log('=== END: Group creation complete ===');
+      } else {
+        console.log('Group creation returned false success');
+        alert(result.message || 'Failed to create group');
       }
+    } else if (data === null) {
+      console.log('=== WARNING: RPC returned null data ===');
+      console.log('This might mean the function executed but returned nothing');
+      alert('Group creation may have succeeded - please refresh to check');
+    } else {
+      console.log('=== WARNING: Unexpected response format ===');
+      console.log('Data:', data);
+      console.log('Data type:', typeof data);
+      console.log('Is array:', Array.isArray(data));
+      alert('Failed to create group - unexpected response');
     }
     
     loading = false;
+    console.log('=== END: Create Group Process ===');
   }
   
   async function respondToInvite(inviteId: string, response: 'accepted' | 'declined') {
@@ -298,6 +489,12 @@
           on:click={() => activeTab = 'my-groups'}
         >
           My Groups ({myGroups.length})
+        </button>
+        <button 
+          class="tab-btn {activeTab === 'discover' ? 'active' : ''}"
+          on:click={() => activeTab = 'discover'}
+        >
+          Discover {#if publicGroups.length > 0}({publicGroups.length}){/if}
         </button>
         <button 
           class="tab-btn {activeTab === 'create' ? 'active' : ''}"
@@ -457,6 +654,62 @@
             {/if}
           {/if}
           
+        {:else if activeTab === 'discover'}
+          {#if loading}
+            <div class="loading">Loading public groups...</div>
+          {:else if publicGroups.length === 0}
+            <div class="empty">
+              <p>No public groups available to join</p>
+              <p class="hint">Public groups created by fellowship members will appear here</p>
+            </div>
+          {:else}
+            <div class="discover-intro">
+              <p>🌟 Join public groups created by your fellowship members</p>
+            </div>
+            <div class="groups-grid">
+              {#each publicGroups as group}
+                <div class="group-card discover-card">
+                  <div class="group-header">
+                    <div class="group-icon">
+                      {#if group.group_type === 'mens'}
+                        👔
+                      {:else if group.group_type === 'womens'}
+                        👗
+                      {:else if group.group_type === 'bible_study'}
+                        📖
+                      {:else if group.group_type === 'prayer'}
+                        🙏
+                      {:else if group.group_type === 'youth'}
+                        🎮
+                      {:else}
+                        👥
+                      {/if}
+                    </div>
+                    <div class="group-info">
+                      <h3>{group.name}</h3>
+                      <p class="group-meta">
+                        {group.member_count} member{group.member_count !== 1 ? 's' : ''} • 
+                        Created by {group.user_profiles?.display_name || 'Unknown'}
+                      </p>
+                    </div>
+                  </div>
+                  {#if group.description}
+                    <p class="group-description">{group.description}</p>
+                  {/if}
+                  <div class="group-actions">
+                    <button 
+                      class="join-btn"
+                      on:click={() => joinPublicGroup(group.id)}
+                      disabled={loading}
+                    >
+                      Join Group
+                    </button>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
+          
         {:else if activeTab === 'create'}
           <div class="create-group-form">
             <div class="form-group">
@@ -497,6 +750,13 @@
                 <input type="checkbox" bind:checked={isPrivate} />
                 Private Group (invitation only)
               </label>
+              <p class="form-hint">
+                {#if isPrivate}
+                  ✅ Only invited members can join this group
+                {:else}
+                  📢 This group will be visible to all fellowship members in the Discover tab
+                {/if}
+              </p>
             </div>
             
             <div class="form-group">
@@ -981,6 +1241,13 @@
     width: auto;
   }
   
+  .form-hint {
+    font-size: 0.85rem;
+    color: var(--text-scripture);
+    margin: 0.5rem 0 0 1.5rem;
+    opacity: 0.9;
+  }
+  
   .select-members-btn {
     width: 100%;
     padding: 0.75rem;
@@ -1129,6 +1396,54 @@
   .decline-btn:hover {
     background: rgba(255, 87, 34, 0.3);
     transform: scale(1.05);
+  }
+  
+  /* Discover Groups Styles */
+  .discover-intro {
+    text-align: center;
+    padding: 1rem 0;
+    color: var(--text-divine);
+    border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+    margin-bottom: 1rem;
+  }
+  
+  .discover-intro p {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+  
+  .discover-card {
+    position: relative;
+  }
+  
+  .group-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 215, 0, 0.1);
+  }
+  
+  .join-btn {
+    padding: 0.5rem 1.5rem;
+    background: linear-gradient(135deg, var(--primary-gold), #ffb300);
+    color: var(--bg-dark);
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+  }
+  
+  .join-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+  }
+  
+  .join-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
   
   @media (max-width: 600px) {
