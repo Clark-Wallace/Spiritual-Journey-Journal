@@ -116,8 +116,7 @@
       .from('fellowship_group_invites')
       .select(`
         *,
-        group:fellowship_groups(name, description, group_type),
-        inviter:auth.users!invited_by(email)
+        group:fellowship_groups(name, description, group_type)
       `)
       .eq('invited_user_id', user.id)
       .eq('status', 'pending')
@@ -132,7 +131,7 @@
     
     console.log('=== Loading Public Groups ===');
     
-    // Get public groups from fellowship members that user is not already in
+    // Get public groups (removed user_profiles join that doesn't exist)
     const { data, error } = await supabase
       .from('fellowship_groups')
       .select(`
@@ -141,10 +140,7 @@
         description,
         group_type,
         created_by,
-        created_at,
-        user_profiles!created_by (
-          display_name
-        )
+        created_at
       `)
       .eq('is_private', false)
       .order('created_at', { ascending: false });
@@ -757,7 +753,7 @@
                       <h3>{group.name}</h3>
                       <p class="group-meta">
                         {group.member_count} member{group.member_count !== 1 ? 's' : ''} • 
-                        Created by {group.user_profiles?.display_name || 'Unknown'}
+                        Public group
                       </p>
                     </div>
                   </div>
@@ -889,7 +885,7 @@
                       <p class="invite-message">"{invite.message}"</p>
                     {/if}
                     <p class="invite-meta">
-                      Invited by {invite.inviter?.email?.split('@')[0] || 'Unknown'}
+                      Invited by a fellowship member
                     </p>
                   </div>
                   <div class="invite-actions">
