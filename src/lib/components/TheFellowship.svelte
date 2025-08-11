@@ -1143,8 +1143,7 @@
     background: rgba(138, 43, 226, 0.05);
     border-radius: 10px;
     border: 1px solid rgba(138, 43, 226, 0.2);
-    overflow-x: auto;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;  /* Allow wrapping to multiple rows */
   }
   
   .group-tab {
@@ -1159,6 +1158,7 @@
     display: flex;
     align-items: center;
     gap: 0.25rem;
+    flex: 0 0 auto;  /* Don't grow or shrink, maintain natural width */
   }
   
   .group-tab:hover {
