@@ -111,16 +111,24 @@
     const user = await getCurrentUser();
     if (!user) return;
     
-    const { data, error } = await supabase
-      .rpc('get_group_unread_counts');
-    
-    if (!error && data) {
-      groupUnreadCounts = {};
-      data.forEach((item: any) => {
-        if (item.unread_count > 0) {
-          groupUnreadCounts[item.group_id] = item.unread_count;
-        }
-      });
+    try {
+      const { data, error } = await supabase
+        .rpc('get_group_unread_counts');
+      
+      if (!error && data) {
+        groupUnreadCounts = {};
+        data.forEach((item: any) => {
+          if (item.unread_count > 0) {
+            groupUnreadCounts[item.group_id] = item.unread_count;
+          }
+        });
+      } else if (error?.code === 'PGRST202') {
+        // Function doesn't exist yet, silently skip
+        console.log('Group notifications not yet configured');
+      }
+    } catch (e) {
+      // Silently handle if notifications aren't set up yet
+      console.log('Group notifications not available');
     }
   }
   
@@ -128,8 +136,13 @@
     const user = await getCurrentUser();
     if (!user) return;
     
-    await supabase
-      .rpc('mark_group_as_read', { p_group_id: groupId });
+    try {
+      await supabase
+        .rpc('mark_group_as_read', { p_group_id: groupId });
+    } catch (e) {
+      // Silently handle if function doesn't exist
+      console.log('Mark as read not available');
+    }
   }
   
   function setupGroupNotifications() {
