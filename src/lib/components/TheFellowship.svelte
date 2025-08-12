@@ -471,6 +471,8 @@
           share_type: post.share_type,
           is_anonymous: post.is_anonymous,
           is_fellowship_only: post.is_fellowship_only,
+          group_id: post.group_id,  // Include group_id
+          group_name: post.group_name,  // Include group_name from RPC
           created_at: post.created_at,
           reactions: reactionsData?.filter(r => r.post_id === post.post_id) || [],
           encouragements: encouragementsData?.filter(e => e.post_id === post.post_id) || []
@@ -975,6 +977,18 @@
                     {/if}
                   </span>
                 </button>
+                {#if !selectedGroupId && post.group_id}
+                  {@const group = myGroups.find(g => g.id === post.group_id)}
+                  {#if group}
+                    <button 
+                      class="group-tag"
+                      on:click={() => selectGroup(group.id, group.name)}
+                      title="Go to {group.name}"
+                    >
+                      {group.type === 'bible_study' ? '📖' : group.type === 'prayer' ? '🙏' : '🏛️'} {group.name}
+                    </button>
+                  {/if}
+                {/if}
                 <span class="post-time">{formatDate(post.created_at)}</span>
               </div>
               
@@ -1533,6 +1547,31 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .group-tag {
+    padding: 0.25rem 0.75rem;
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.15), rgba(30, 144, 255, 0.15));
+    border: 1px solid var(--border-purple);
+    border-radius: 12px;
+    color: var(--text-divine);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: auto;
+    margin-right: 0.5rem;
+  }
+  
+  .group-tag:hover {
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(30, 144, 255, 0.3));
+    border-color: var(--primary-color-bright);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(138, 43, 226, 0.3);
   }
   
   .author-link {
