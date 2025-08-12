@@ -4,7 +4,7 @@ A modern web application for spiritual growth, Christian fellowship, and AI-powe
 
 **Live at:** [www.spiritualjourney.app](https://www.spiritualjourney.app)
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.2.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/clarkwallace)
 
@@ -75,6 +75,35 @@ Features:
   - Encouraging message
 - **Voice Input**: Speak your situation for guidance
 - **Living Scrolls Library**: 43 pre-compiled scripture collections for life situations
+
+### 🏛️ Fellowship Groups (Small Group Communities)
+Create and join small group communities for focused fellowship and Bible study:
+
+**Group Features:**
+- **Group Types**: Bible Study (📖), Prayer Groups (🙏), General Fellowship (🏛️)
+- **Privacy Options**: Public (discoverable) or Private (invite-only)
+- **Roles**: Admin, Moderator, and Member permissions
+- **Group Management**: Create, invite members, manage roles
+
+**Integrated Feed System:**
+- **Smart Group Selector**: Tabs below Fellowship navigation (wraps to multiple rows)
+- **Unified Feed**: Switch between "All Fellowship" and specific groups seamlessly
+- **Group Tags**: Posts show source group in "All Fellowship" view
+- **Click Navigation**: Click group tags to jump to that group instantly
+
+**Real-time Notifications:**
+- **Unread Badges**: Pulsing red badges show new message counts per group
+- **Smart Tracking**: Per-group last read timestamps
+- **Browser Notifications**: Desktop notifications for new group messages
+- **Live Updates**: Feed refreshes automatically when new posts arrive
+- **Presence Aware**: Only notifies for groups you're not currently viewing
+
+**Member Experience:**
+- See all your groups at a glance
+- Admin crown badges (👑) for groups you manage
+- Member counts visible on group cards
+- Discover public groups to join
+- Accept/decline group invitations
 
 ### 🎤 Voice Features (Desktop Only)
 - Powered by OpenAI Whisper API

@@ -5,7 +5,7 @@ Spiritual Journey is a comprehensive faith-based platform built with Svelte, Typ
 
 **Live URL**: https://www.spiritualjourney.app  
 **GitHub**: https://github.com/Clark-Wallace/Spiritual-Journey-Journal  
-**Status**: Production (Stable - Last updated: January 2025)
+**Status**: Production (Stable - Last updated: January 2025 - v2.2.0 with Fellowship Groups)
 
 ## Current Tech Stack
 - **Frontend**: Svelte 5.35.5, TypeScript 5.8.3, Vite 7.0.4
@@ -79,7 +79,27 @@ Spiritual Journey is a comprehensive faith-based platform built with Svelte, Typ
 - **Member Management**: View profiles, remove from fellowship
 - **Privacy**: All fellowship posts marked with is_fellowship_only = true
 
-### 5. AI Scripture Guidance
+### 5. Fellowship Groups (Small Group Communities)
+- **Group Creation**: Create Bible Study, Prayer, or General groups
+- **Membership System**: Admin/moderator/member roles with permissions
+- **Group Types**: Bible Study (📖), Prayer (🙏), General (🏛️)
+- **Public/Private Groups**: Discoverable public groups or invite-only private
+- **Invite System**: Send/accept group invitations with member management
+- **Group Feed Integration**: Seamless switching between "All Fellowship" and specific groups
+- **Group Selector UI**: Multi-row tabs below main navigation (wraps as needed)
+- **Group-Specific Posts**: Posts target selected group with group_id reference
+- **Group Tags**: Shows source group on posts in "All Fellowship" view
+- **Click Navigation**: Click group tags to jump directly to that group
+- **Real-time Updates**: Live feed refresh when new posts arrive
+- **Notification System**:
+  - Unread count badges with pulsing red animation
+  - Per-group last read tracking (fellowship_group_last_read table)
+  - Browser notifications for new messages (with permission)
+  - Real-time unread count updates via Supabase subscriptions
+- **Smart Filtering**: View all fellowship or focus on specific groups
+- **Activity Tracking**: See member count and admin status at a glance
+
+### 6. AI Scripture Guidance
 - **Dual Mode**: AI-powered (Claude) with keyword fallback
 - **Context-Aware**: Uses journal entries and mood for personalization
 - **Scripture Display**: Beautiful modal with 2-3 relevant verses
@@ -93,7 +113,7 @@ Spiritual Journey is a comprehensive faith-based platform built with Svelte, Typ
 ```sql
 -- Core content tables
 journal_entries        -- Personal journal with mood, gratitude, content, prayer
-community_posts        -- Posts with is_fellowship_only flag for privacy control
+community_posts        -- Posts with is_fellowship_only flag and group_id for group posts
 chat_messages          -- Room-based messages with reactions (includes room column)
 user_presence          -- Per-room online status tracking (includes room column)
 fellowships            -- User-to-user connections
@@ -101,6 +121,12 @@ fellowship_requests    -- Pending fellowship invitations
 user_profiles          -- User display names and metadata
 private_messages       -- Direct messages between fellowship members
 chat_requests          -- Chat request system with expiration
+
+-- Fellowship Groups tables
+fellowship_groups      -- Group definitions (name, type, privacy, created_by)
+fellowship_group_members -- Group membership with roles (admin/moderator/member)
+fellowship_group_invites -- Pending group invitations
+fellowship_group_last_read -- Tracks last read timestamp per group per user
 
 -- Interaction tables  
 reactions              -- Community post reactions
@@ -143,8 +169,22 @@ respond_to_chat_request(p_request_id UUID, p_user_id UUID, p_response TEXT)
 get_pending_chat_requests(p_user_id UUID)
 
 -- Fellowship feed function (often missing - causes 404/400 errors)
-get_fellowship_feed(for_user_id UUID) -- See database/ADD_FELLOWSHIP_ONLY_TO_POSTS.sql
+get_fellowship_feed(for_user_id UUID) -- Updated to include group_id and group_name
 -- Note: Must DROP FUNCTION first if changing return type
+
+-- Fellowship Groups functions
+create_fellowship_group(p_name VARCHAR, p_description TEXT, p_group_type VARCHAR, p_is_private BOOLEAN)
+get_my_fellowship_groups(p_user_id UUID)
+get_public_fellowship_groups()
+send_group_invite(p_group_id UUID, p_invited_user_id UUID, p_inviter_id UUID)
+respond_to_group_invite(p_invite_id UUID, p_user_id UUID, p_response TEXT)
+get_group_invites(p_user_id UUID)
+get_fellowship_members_for_invite(p_user_id UUID)
+
+-- Group notification functions
+mark_group_as_read(p_group_id UUID)
+get_group_unread_counts()
+get_group_unread_count(p_group_id UUID)
 ```
 
 ## Environment Configuration
@@ -340,15 +380,19 @@ database/FIX_RPC_FUNCTIONS.sql          -- Fix column ambiguity in RPC functions
 
 ## Version History
 
-- **v2.1.0** (Current): Fellowship privacy separation and enhanced posting
+- **v2.2.0** (Current): Fellowship Groups with real-time notifications
+- **v2.1.0**: Fellowship privacy separation and enhanced posting
 - **v2.0.0**: Complete Svelte rewrite from React Native
 - **Stable Commit**: c65bc7f (recommended baseline)
 - **Latest Features**: 
-  - Journal entries share to Fellowship only with simplified format
-  - Direct posting in both Fellowship and Community
-  - Working reactions (Pray, Love, Amen) with active states
-  - Functional encouragements with inline UI
-  - Enhanced Fellowship post creator with character counter
+  - Fellowship Groups for small group communities (Bible study, prayer, general)
+  - Group-specific feeds with seamless switching
+  - Real-time unread count badges with pulsing animation
+  - Browser notifications for new group messages
+  - Group tags on posts in "All Fellowship" view
+  - Click-to-navigate between groups
+  - Per-group last read tracking
+  - Multi-row group selector that wraps as needed
   - Prayer wall aesthetic for Community Wall
   - Debug logging for troubleshooting
 
