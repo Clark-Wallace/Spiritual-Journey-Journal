@@ -453,20 +453,68 @@
     min-height: 100vh;
     width: 100vw;
     z-index: 999;
-    background: linear-gradient(180deg, var(--bg-dark) 0%, var(--bg-dark-secondary) 100%);
+    /* Realistic corkboard texture */
+    background: 
+      /* Subtle grain overlay */
+      repeating-linear-gradient(
+        90deg,
+        rgba(139, 90, 43, 0.1) 0px,
+        transparent 1px,
+        transparent 2px,
+        rgba(139, 90, 43, 0.1) 3px
+      ),
+      repeating-linear-gradient(
+        0deg,
+        rgba(160, 82, 45, 0.1) 0px,
+        transparent 1px,
+        transparent 2px,
+        rgba(160, 82, 45, 0.1) 3px
+      ),
+      /* Cork texture gradients */
+      radial-gradient(ellipse at 20% 30%, #c8986b 0%, transparent 50%),
+      radial-gradient(ellipse at 60% 70%, #daa76a 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, #d4a574 0%, transparent 40%),
+      radial-gradient(ellipse at 40% 80%, #c8986b 0%, transparent 50%),
+      /* Base cork color */
+      linear-gradient(180deg, #d4a574 0%, #c8986b 50%, #b8935f 100%);
+    background-size: 4px 4px, 4px 4px, 300px 300px, 400px 400px, 350px 350px, 450px 450px, 100% 100%;
     overflow-y: auto;
     padding: 0;
+    /* Inner shadow for depth */
+    box-shadow: 
+      inset 0 0 100px rgba(0, 0, 0, 0.2),
+      inset 0 0 50px rgba(101, 67, 33, 0.3),
+      inset 0 0 30px rgba(139, 90, 43, 0.2);
+  }
+  
+  /* Wood frame effect overlay */
+  .wall-container.fullscreen::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 1000;
+    /* Wood frame border shadow */
+    box-shadow: 
+      inset 0 0 60px rgba(0, 0, 0, 0.6),
+      inset 0 0 30px rgba(92, 51, 23, 0.5),
+      inset 5px 5px 20px rgba(0, 0, 0, 0.4),
+      inset -5px -5px 20px rgba(0, 0, 0, 0.4);
   }
   
   .fullscreen .wall-header {
     text-align: center;
     margin-bottom: 1rem;
     padding: 1rem;
-    background: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 50%, transparent 100%);
+    background: linear-gradient(180deg, rgba(92, 51, 23, 0.95) 0%, rgba(139, 90, 43, 0.8) 50%, transparent 100%);
     position: sticky;
     top: 0;
-    z-index: 100;
-    backdrop-filter: blur(10px);
+    z-index: 1001;
+    backdrop-filter: blur(5px);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   }
   
   .exit-wall-btn {
@@ -527,10 +575,15 @@
   }
   
   .wall-header h1 {
-    color: var(--text-divine);
-    font-size: 2.5rem;
+    color: #fff;
+    font-size: 2.8rem;
     margin: 0;
-    text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+    text-shadow: 
+      3px 3px 6px rgba(0, 0, 0, 0.9),
+      0 0 20px rgba(255, 215, 0, 0.4);
+    font-family: 'Caveat', cursive;
+    font-weight: 700;
+    letter-spacing: 3px;
   }
   
   .wall-subtitle {
@@ -599,27 +652,58 @@
     min-height: 180px;
     cursor: pointer;
     transition: all 0.3s;
+    /* Realistic layered paper shadow */
     box-shadow: 
-      2px 2px 10px rgba(0, 0, 0, 0.3),
-      inset 0 0 20px rgba(0, 0, 0, 0.05);
+      0 1px 1px rgba(0, 0, 0, 0.15),
+      0 3px 3px rgba(0, 0, 0, 0.15),
+      0 6px 6px rgba(0, 0, 0, 0.15),
+      0 10px 10px rgba(0, 0, 0, 0.15),
+      0 15px 15px rgba(0, 0, 0, 0.15);
     font-family: 'Caveat', cursive, var(--font-secondary);
     color: #333;
+    /* Paper texture with lines */
     background-image: 
       repeating-linear-gradient(
         0deg,
         transparent,
-        transparent 20px,
-        rgba(0, 0, 0, 0.02) 20px,
-        rgba(0, 0, 0, 0.02) 21px
+        transparent 28px,
+        rgba(0, 82, 204, 0.05) 28px,
+        rgba(0, 82, 204, 0.05) 29px
+      ),
+      radial-gradient(
+        ellipse at 50% 50%,
+        rgba(255, 255, 255, 0.9) 0%,
+        transparent 70%
       );
+    /* Slightly folded corner */
+    border-radius: 0 0 0 3px;
+  }
+  
+  /* Paper fold effect at bottom corner */
+  .wall-note::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 25px;
+    height: 25px;
+    background: linear-gradient(
+      -45deg,
+      rgba(0, 0, 0, 0.08) 45%,
+      transparent 50%
+    );
+    border-radius: 0 0 0 100%;
   }
   
   .wall-note:hover {
-    transform: scale(1.05) rotate(0deg) !important;
+    transform: scale(1.08) rotate(0deg) !important;
     z-index: 100 !important;
     box-shadow: 
-      4px 4px 20px rgba(0, 0, 0, 0.4),
-      0 0 30px rgba(255, 215, 0, 0.2);
+      0 2px 2px rgba(0, 0, 0, 0.2),
+      0 6px 6px rgba(0, 0, 0, 0.2),
+      0 12px 12px rgba(0, 0, 0, 0.2),
+      0 20px 20px rgba(0, 0, 0, 0.2),
+      0 30px 30px rgba(0, 0, 0, 0.2);
   }
   
   .pin {
@@ -627,9 +711,14 @@
     top: -10px;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 1.5rem;
-    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
+    font-size: 1.8rem;
+    /* Realistic pushpin shadow */
+    filter: 
+      drop-shadow(0 2px 2px rgba(0, 0, 0, 0.4))
+      drop-shadow(0 3px 4px rgba(0, 0, 0, 0.2));
     z-index: 1;
+    /* Slight rotation for realism */
+    transform: translateX(-50%) rotate(5deg);
   }
   
   .note-content {
